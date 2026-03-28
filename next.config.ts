@@ -1,7 +1,19 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  turbopack: {},
 
-const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**' },
+    ],
+  },
+
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'pg', '@prisma/adapter-pg'],
+  },
+
+  reactStrictMode: true,
+  swcMinify: true,
 };
 
-export default nextConfig;
+module.exports = nextConfig;

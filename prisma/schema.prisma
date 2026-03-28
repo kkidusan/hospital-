@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────
+// AUTH & USER MANAGEMENT
+// ──────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  RECEPTION_TRIAGE
+  SPECIALIST
+  LABORATORY
+  RADIOLOGY
+  BILLING
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  password            String
+  role                Role      @default(RECEPTION_TRIAGE)
+  failedLoginAttempts Int       @default(0)
+  lastFailedLogin     DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// PATIENT MASTER RECORD
+// ──────────────────────────────────────────────
+
+model Patient {
+  id          String  @id @default(cuid())
+  mrn         String  @unique // Medical Record Number
+  fullName    String
+  age         Int
+  ageUnit     String  // "years" | "months" | "days"
+  sex         String  // "M" | "F"
+  phone       String?
+  address     String?
+  region      String? @default("Amhara")
+  zoneSubcity String?
+  woreda      String?
+
+  // Persistent Summary (Latest Visit)
+  lastDiagnosis String?
+  lastSummary   String?
+  lastVisitDate DateTime? @default(now())
+
+  registeredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Active Session Relations
+  queue   Queue?
+  triage  Triage?
+  
+  // History & Transactions
+  consultations     Consultation[]
+  labRequests       LabRequest[]
+  radiologyRequests RadiologyRequest[]
+  prescriptions     Prescription[]
+  appointments      Appointment[]
+  invoices          Invoice[]
+
+  @@index([mrn])
+  @@index([phone])
+  @@index([fullName])
+  @@map("patients")
+}
+
+// ──────────────────────────────────────────────
+// BILLING & INVOICING (NEW)
+// ──────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  patientId   String
+  patient     Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  items       InvoiceItem[]
+  totalAmount Float
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([patientId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  serviceName String
+  serviceType String  // "LAB", "RADIOLOGY", "CONSULTATION"
+  price       Float
+  serviceId   String  // Foreign ID to LabRequest or RadiologyRequest
+}
+
+// ──────────────────────────────────────────────
+// CONSULTATION HISTORY (THE ARCHIVE)
+// ──────────────────────────────────────────────
+
+model Consultation {
+  id             String   @id @default(cuid())
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  vitals         Json?    // {temp, bp, pulse, spo2, weight}
+  chiefComplaint String
+  diagnosis      String
+  clinicalNotes  String?  @db.Text
+  
+  labResults     Json?    // [{testName, result, flag, unit}]
+  radResults     Json?    // [{scanType, findings}]
+  
+  createdAt      DateTime @default(now())
+
+  @@index([patientId])
+  @@map("consultations")
+}
+
+// ──────────────────────────────────────────────
+// ACTIVE CLINICAL DATA (LIVE SESSION)
+// ──────────────────────────────────────────────
+
+model Triage {
+  id              String  @id @default(cuid())
+  patientId       String  @unique
+  patient         Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  temperature     Float?
+  pulse           Int?
+  respiratoryRate Int?
+  bloodPressure   String?
+  spo2            Int?
+  weight          Float?
+  chiefComplaint  String
+  triageLevel     String  // "Emergency", "Urgent", "Routine"
+  notes           String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("triages")
+}
+
+model Queue {
+  id        String      @id @default(cuid())
+  patientId String      @unique
+  patient   Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status    QueueStatus @default(WAITING)
+  position  Int?        
+
+  enteredAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("queues")
+}
+
+enum QueueStatus {
+  WAITING
+  IN_TRIAGE
+  TRIAGED
+  EMERGENCY
+  COMPLETED
+}
+
+// ──────────────────────────────────────────────
+// INVESTIGATIONS & TREATMENTS
+// ──────────────────────────────────────────────
+
+model LabRequest {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  testName  String
+  // STATUS FLOW: PENDING_PAYMENT -> PAID -> COLLECTING -> COMPLETED
+  status    String   @default("PENDING_PAYMENT") 
+  result    String?
+  unit      String?
+  refRange  String?
+  flag      String?  // NORMAL, HIGH, LOW, CRITICAL
+  remarks   String?  @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lab_requests")
+}
+
+model RadiologyRequest {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  scanType  String
+  // STATUS FLOW: PENDING_PAYMENT -> PAID -> COMPLETED
+  status    String   @default("PENDING_PAYMENT")
+  findings  String?  @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("radiology_requests")
+}
+
+model Prescription {
+  id           String   @id @default(cuid())
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicineName String
+  dosage       String?
+  frequency    String?
+  duration     String?
+  
+  createdAt    DateTime @default(now())
+
+  @@map("prescriptions")
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  patientId       String
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentDate DateTime
+  reason          String?
+  status          AppointmentStatus @default(SCHEDULED)
+  notes           String?           @db.Text
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([appointmentDate])
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  ARRIVED
+  CANCELLED
+  COMPLETED
+  NOSHOW
+}
