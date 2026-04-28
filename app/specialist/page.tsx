@@ -1,22 +1,22 @@
-import { prisma } from '@/lib/db'
-import Link from 'next/link'
+// app/specialist/page.tsx
+import { prisma } from '@/lib/db';
+import { Users, AlertCircle, CheckCircle } from 'lucide-react';
+import QueueList from './QueueList';
 
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
-async function getSpecialistData() {
+async function getInitialData() {
   const [queue, stats] = await Promise.all([
     prisma.queue.findMany({
-      // FIX: Include 'WAITING' so Direct Send patients appear
       where: { 
-        OR: [
-          { status: 'TRIAGED' },
-          { status: 'WAITING' } 
-        ]
+        OR: [{ status: 'TRIAGED' }, { status: 'WAITING' }] 
       },
-      include: {
-        patient: {
-          include: { triage: true }
-        }
+      include: { 
+        patient: { 
+          include: { 
+            triage: true 
+          } 
+        } 
       },
       orderBy: { enteredAt: 'asc' }
     }),
@@ -30,73 +30,71 @@ async function getSpecialistData() {
 }
 
 export default async function SpecialistDashboard() {
-  const { queue, stats } = await getSpecialistData();
+  const { queue, stats } = await getInitialData();
 
   const summaryCards = [
-    { label: "In Queue", value: queue.length, color: "#2563eb", icon: "👥" },
-    { label: "Emergency", value: queue.filter(q => q.patient.triage?.triageLevel === '1').length, color: "#dc2626", icon: "🚨" },
-    { label: "Completed", value: stats.find(s => s.status === 'COMPLETED')?._count._all || 0, color: "#059669", icon: "✅" },
+    { 
+      label: "In Queue", 
+      value: queue.length, 
+      color: "text-blue-600", 
+      bg: "bg-blue-50", 
+      icon: <Users size={18} /> 
+    },
+    { 
+      label: "Emergency", 
+      value: queue.filter(q => q.patient?.triage?.triageLevel === '1').length, 
+      color: "text-red-600", 
+      bg: "bg-red-50", 
+      icon: <AlertCircle size={18} /> 
+    },
+    { 
+      label: "Completed", 
+      value: stats.find(s => s.status === 'COMPLETED')?._count._all || 0, 
+      color: "text-emerald-600", 
+      bg: "bg-emerald-50", 
+      icon: <CheckCircle size={18} /> 
+    },
   ];
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-      <header style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a' }}>Specialist Queue</h1>
-        <p style={{ color: '#64748b' }}>Select a patient to begin consultation.</p>
-      </header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
-        {summaryCards.map((card, idx) => (
-          <div key={idx} style={cardStyle}>
-            <div style={{ fontSize: '1.2rem', color: card.color, fontWeight: 800 }}>{card.label}</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>{card.value}</div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8 flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Specialist Console
+            </h1>
+            <p className="text-slate-500 text-sm font-medium">
+              Manage active consultations
+            </p>
           </div>
-        ))}
-      </div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-slate-200">
+            Station Alpha
+          </span>
+        </header>
 
-      <div style={tableContainer}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: '#f8fafc' }}>
-            <tr style={{ textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-              <th style={thStyle}>Patient</th>
-              <th style={thStyle}>Priority / Type</th>
-              <th style={thStyle}>Wait Time</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queue.map((item) => (
-              <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={tdStyle}>
-                  <div style={{ fontWeight: 700 }}>{item.patient.fullName}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>MRN: {item.patient.mrn}</div>
-                </td>
-                <td style={tdStyle}>
-                  {item.patient.triage ? (
-                    <span style={getEsiStyle(item.patient.triage.triageLevel)}>Level {item.patient.triage.triageLevel}</span>
-                  ) : (
-                    <span style={directBadge}>Direct Consultation</span>
-                  )}
-                </td>
-                <td style={tdStyle}>{new Date(item.enteredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  <Link href={`/specialist/consultation/${item.patientId}`}>
-                    <button style={btnStyle}>Attend Patient</button>
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {summaryCards.map((card, idx) => (
+            <div 
+              key={idx} 
+              className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4"
+            >
+              <div className={`${card.bg} ${card.color} p-2.5 rounded-xl`}>
+                {card.icon}
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  {card.label}
+                </p>
+                <p className="text-xl font-black text-slate-900">{card.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Real-time List Component */}
+        <QueueList initialData={queue} />
       </div>
     </div>
   );
 }
-
-const cardStyle = { background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' };
-const tableContainer = { background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' };
-const thStyle = { padding: '16px', fontWeight: 800 };
-const tdStyle = { padding: '16px' };
-const btnStyle = { background: '#2563eb', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' };
-const directBadge = { background: '#f0f9ff', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 };
-function getEsiStyle(l: any) { return { background: l === '1' ? '#fee2e2' : '#fef9c3', color: l === '1' ? '#991b1b' : '#854d0e', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 }; }

@@ -1,7 +1,8 @@
-"use client";
+'use client'
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { 
   BeakerIcon, 
   HomeIcon, 
@@ -11,73 +12,125 @@ import {
   ChartBarIcon, 
   UserGroupIcon, 
   AdjustmentsVerticalIcon,
-  ExclamationCircleIcon // Added this for Pending Tests
+  ExclamationCircleIcon 
 } from '@heroicons/react/24/outline';
 
-const menuItems = [
-  { name: 'Dashboard Home', href: '/laboratory', icon: HomeIcon },
-  { name: 'New Test Requests', href: '/laboratory/requests', icon: QueueListIcon },
-  { name: 'Sample Collection', href: '/laboratory/samples', icon: UserGroupIcon },
-  { name: 'Pending Tests', href: '/laboratory/pending', icon: ExclamationCircleIcon }, // Fixed
-  { name: 'Completed Tests', href: '/laboratory/completed', icon: ClipboardDocumentCheckIcon },
-  { name: 'Test Categories', href: '/laboratory/categories', icon: AdjustmentsVerticalIcon },
-  { name: 'Equipment List', href: '/laboratory/equipment', icon: WrenchScrewdriverIcon },
-  { name: 'Quality Control', href: '/laboratory/qc', icon: ChartBarIcon },
-];
-
-export default function LabSidebar() {
-  const pathname = usePathname();
-
-  return (
-    <aside style={sidebarStyle}>
-      <div style={logoSection}>
-        <BeakerIcon style={{ width: '32px', color: '#3b82f6' }} />
-        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>BRUH LAB</h2>
-      </div>
-      
-      <nav style={{ padding: '15px 10px', flex: 1, overflowY: 'auto' }}>
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link key={item.name} href={item.href} style={navLink(isActive)}>
-              <item.icon style={{ width: '20px', marginRight: '12px', strokeWidth: 2 }} />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div style={footerStyle}>
-        <div style={versionBadge}>v2.4.0-Stable</div>
-      </div>
-    </aside>
-  );
+interface SidebarProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-// --- STYLES ---
-const sidebarStyle = { 
-  width: '260px', 
-  background: '#ffffff', 
-  borderRight: '1px solid #e2e8f0', 
-  display: 'flex', 
-  flexDirection: 'column' as const, 
-  height: '100vh', 
-  position: 'sticky' as const, 
-  top: 0 
-};
-const logoSection = { padding: '25px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #f1f5f9' };
-const navLink = (active: boolean) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: '12px 16px',
-  textDecoration: 'none',
-  color: active ? '#2563eb' : '#64748b',
-  background: active ? '#eff6ff' : 'transparent',
-  borderRadius: '10px',
-  marginBottom: '4px',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  transition: 'all 0.2s'
-});
-const footerStyle = { padding: '20px', borderTop: '1px solid #f1f5f9', textAlign: 'center' as const };
-const versionBadge = { fontSize: '0.7rem', color: '#94a3b8', background: '#f8fafc', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' };
+const MENU_ITEMS = [
+  { group: "Overview", items: [
+    { name: 'Dashboard', icon: HomeIcon, href: '/laboratory' },
+    { name: 'New Requests', icon: QueueListIcon, href: '/laboratory/requests' },
+  ]},
+  { group: "Processing", items: [
+    { name: 'Samples', icon: UserGroupIcon, href: '/laboratory/samples' },
+    { name: 'Pending', icon: ExclamationCircleIcon, href: '/laboratory/pending' },
+    { name: 'Completed', icon: ClipboardDocumentCheckIcon, href: '/laboratory/completed' },
+  ]},
+  { group: "Management", items: [
+    { name: 'Categories', icon: AdjustmentsVerticalIcon, href: '/laboratory/categories' },
+    { name: 'Equipment', icon: WrenchScrewdriverIcon, href: '/laboratory/equipment' },
+    { name: 'QC Control', icon: ChartBarIcon, href: '/laboratory/qc' },
+  ]}
+];
+
+export default function LabSidebar({ isOpen, setIsOpen }: SidebarProps) {
+  const pathname = usePathname()
+  const [time, setTime] = useState("")
+
+  useEffect(() => {
+    const updateTime = () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    updateTime();
+    const timer = setInterval(updateTime, 60000);
+    return () => clearInterval(timer);
+  }, [])
+
+  return (
+    <aside style={{ 
+      width: isOpen ? '240px' : '70px',
+      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      backgroundColor: '#f8fafc',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRight: '1px solid #e2e8f0',
+      zIndex: 50,
+      flexShrink: 0
+    }}>
+      {/* MODERN FLOATING SCROLLBAR */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .nav-area { scrollbar-width: none; -ms-overflow-style: none; }
+        .nav-area::-webkit-scrollbar { width: 2px; display: none; }
+        .nav-area:hover::-webkit-scrollbar { display: block; }
+        .nav-area::-webkit-scrollbar-track { background: transparent; margin: 20px 0; }
+        .nav-area::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+      `}} />
+      
+      {/* Header Section */}
+      <div style={{ padding: '16px 12px', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'flex-start' : 'center' }}>
+        {isOpen ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BeakerIcon style={{ width: '20px', color: '#000' }} />
+            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Laboratory Portal
+            </span>
+          </div>
+        ) : (
+          <BeakerIcon style={{ width: '24px', color: '#000' }} />
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="nav-area" style={{ flex: 1, padding: '0 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+        {MENU_ITEMS.map((group, idx) => (
+          <div key={idx} style={{ marginBottom: '14px' }}>
+            {isOpen && (
+              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px', paddingLeft: '10px' }}>
+                {group.group}
+              </p>
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.name} href={item.href} title={!isOpen ? item.name : ""}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'flex-start' : 'center',
+                    padding: '8px 10px', borderRadius: '8px', textDecoration: 'none',
+                    backgroundColor: isActive ? '#eff6ff' : 'transparent',
+                    color: isActive ? '#0f172a' : '#64748b',
+                    marginBottom: '2px', transition: 'all 0.15s ease',
+                    border: isActive ? '1px solid #dbeafe' : '1px solid transparent'
+                  }}>
+                  <item.icon style={{ 
+                    width: '18px',
+                    marginRight: isOpen ? '10px' : '0',
+                    color: '#000', // STRICT BLACK ICON
+                    strokeWidth: isActive ? 2.5 : 2,
+                    opacity: isActive ? 1 : 0.7
+                  }} />
+                  {isOpen && <span style={{ fontSize: '0.85rem', fontWeight: isActive ? 700 : 500 }}>{item.name}</span>}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer Section */}
+      <div style={{ padding: '12px', borderTop: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'space-between' : 'center' }}>
+        {isOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.55rem', color: '#94a3b8', fontWeight: 700 }}>LAB CLOCK</span>
+            <span style={{ fontSize: '0.75rem', color: '#1e293b', fontWeight: 600 }}>{time}</span>
+          </div>
+        )}
+        <button onClick={() => setIsOpen(!isOpen)} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.3s ease', fontSize: '12px', fontWeight: 'bold', color: '#000' }}>«</span>
+        </button>
+      </div>
+    </aside>
+  )
+}

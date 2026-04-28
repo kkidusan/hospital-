@@ -1,16 +1,42 @@
-version: '3.8'
 services:
   db:
     image: postgres:16
     container_name: allowance-db
     restart: always
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: bruhtech123
-      POSTGRES_DB: postgres
+      POSTGRES_DB: hms_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: hms-web-app
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:bruhtech123@db:5432/hms_db"
+      BACKUP_ENCRYPTION_PASSWORD: "DrBirkuBeleteClinicBackup2026!SecureKeyX7z9vK2mPq"
+      NEXT_PUBLIC_API_URL: "http://192.168.137.1/api"
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    container_name: hms-proxy
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
 
 volumes:
   postgres_data:

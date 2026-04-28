@@ -1,19 +1,16 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  turbopack: {},
+import type { NextConfig } from "next";
 
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-    ],
-  },
-
+const nextConfig: NextConfig = {
+  allowedDevOrigins: ['http://192.168.137.1:3000', 'localhost:3000', '192.168.137.1'],
+  output: 'standalone',
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
+  images: { unoptimized: true },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'pg', '@prisma/adapter-pg'],
+    serverActions: {
+      bodySizeLimit: '10mb', 
+    },
   },
-
-  reactStrictMode: true,
-  swcMinify: true,
 };
 
-module.exports = nextConfig;
+export default nextConfig;

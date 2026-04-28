@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import LabSidebar from './LabSidebar';
 import LabHeader from './LabHeader';
 
@@ -11,140 +11,53 @@ export default function LabLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // --- 1. AUTHORIZATION & REDIRECT LOGIC ---
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      // Not logged in? Send to login
-      router.replace('/');
-    } else if (status === 'authenticated' && session?.user?.role !== 'LABORATORY') {
-      // Wrong role? Send to their appropriate dashboard
+    if (status === 'unauthenticated' || (status === 'authenticated' && session?.user?.role !== 'LABORATORY')) {
       router.replace('/');
     }
   }, [status, session, router]);
 
-  // --- 2. THE SECURE LOADING GATE ---
-  /**
-   * We hide the entire layout if:
-   * - Session is still fetching (loading)
-   * - User is not logged in (unauthenticated)
-   * - User is logged in but the role isn't LABORATORY
-   */
-  if (status === 'loading' || status === 'unauthenticated' || session?.user?.role !== 'LABORATORY') {
+  if (status === 'loading' || !session || session?.user?.role !== 'LABORATORY') {
     return (
-      <div style={gatekeeperContainer}>
-        <div style={gatekeeperContent}>
-          <Loader2 style={spinnerStyle} className="animate-spin" />
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={gateTitle}>Secure Lab Access</h2>
-            <p style={gateSubtitle}>Verifying Laboratory Credentials...</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-[9999]">
+        <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-3xl shadow-xl border border-slate-100">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+            <ShieldCheck className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-blue-400" />
           </div>
+          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Lab Security Gate</h2>
         </div>
       </div>
     );
   }
 
-  // --- 3. THE AUTHORIZED CONTENT ---
-  // This code only runs if the user is 100% verified as LABORATORY
   return (
-    <div style={layoutContainer}>
-      {/* Fixed Sidebar on the left */}
-      <LabSidebar />
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
+      {/* Sidebar - Controlled by Layout State */}
+      <LabSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      {/* Main content area on the right */}
-      <div style={mainWrapper}>
-        
-        {/* Sticky Header */}
+      <div className="flex-1 flex flex-col min-width-0 transition-all duration-300">
         <LabHeader />
 
-        {/* Scrollable Page Content */}
-        <main style={contentArea}>
-          <div style={innerContent}>
+        <main className="flex-1 overflow-y-auto p-6 bg-[radial-gradient(#e2e8f0_0.8px,transparent_0.8px)] [background-size:24px_24px]">
+          <div className="max-w-[1500px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </div>
         </main>
 
-        {/* Lab Footer */}
-        <footer style={footerStyle}>
-          © 2026 Bruh Tech Hospital Management System | Laboratory Department
+        <footer className="p-4 text-[0.7rem] text-slate-400 text-center bg-white border-t border-slate-100">
+          © 2026 Bruh Tech HMS | Lab Module v2.4.0
         </footer>
       </div>
+
+      <style jsx global>{`
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      `}</style>
     </div>
   );
 }
-
-// --- UPDATED STYLES ---
-
-const gatekeeperContainer = {
-  height: '100vh',
-  width: '100vw',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#f8fafc',
-};
-
-const gatekeeperContent = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'center',
-  gap: '16px',
-};
-
-const gateTitle = {
-  fontSize: '1.25rem',
-  fontWeight: 'bold',
-  color: '#0f172a',
-  margin: 0,
-};
-
-const gateSubtitle = {
-  fontSize: '0.875rem',
-  color: '#64748b',
-  margin: '4px 0 0 0',
-};
-
-const spinnerStyle = {
-  width: '40px',
-  height: '40px',
-  color: '#2563eb', // Hospital Blue
-};
-
-const layoutContainer = {
-  display: 'flex',
-  flexDirection: 'row' as const,
-  height: '100vh',
-  width: '100vw',
-  overflow: 'hidden',
-  background: '#f8fafc',
-};
-
-const mainWrapper = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  height: '100vh',
-  overflow: 'hidden',
-};
-
-const contentArea = {
-  flex: 1,
-  overflowY: 'auto' as const,
-  padding: '20px',
-  display: 'flex',
-  flexDirection: 'column' as const,
-};
-
-const innerContent = {
-  maxWidth: '1400px',
-  width: '100%',
-  margin: '0 auto',
-};
-
-const footerStyle = {
-  padding: '15px 30px',
-  fontSize: '0.75rem',
-  color: '#94a3b8',
-  textAlign: 'center' as const,
-  background: '#fff',
-  borderTop: '1px solid #e2e8f0',
-};

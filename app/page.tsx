@@ -44,7 +44,7 @@ export default function LoginPage() {
 
   const roleRedirectMap: Record<string, string> = {
     ADMIN: '/admin',
-    RECEPTION_TRIAGE: '/reception-triage',
+    RECEPTION: '/reception-triage',
     SPECIALIST: '/specialist',
     LABORATORY: '/laboratory',
   }

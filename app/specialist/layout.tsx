@@ -1,217 +1,119 @@
-'use client'
-
-import React, { useState, useEffect } from 'react'
-
-import { useSession } from 'next-auth/react'
-
-import { useRouter } from 'next/navigation'
-
-import { Loader2 } from 'lucide-react'
-
-import DoctorSidebar from '../components/specialist/DoctorSidebar'
-
-import DoctorHeader from '../components/specialist/DoctorHeader'
-
-
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import DoctorSidebar from '../components/specialist/DoctorSidebar';
+import DoctorHeader from '../components/specialist/DoctorHeader';
 
 export default function SpecialistLayout({
-
   children,
-
 }: {
-
-  children: React.ReactNode
-
+  children: React.ReactNode;
 }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  const { data: session, status } = useSession()
-
-  const router = useRouter()
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-
-
-
-  // 1. Handle Redirects in useEffect
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isValidating, setIsValidating] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-
     if (status === 'unauthenticated') {
-
-      router.replace('/login')
-
-    } else if (status === 'authenticated' && session?.user?.role !== 'SPECIALIST') {
-
-      // If they are logged in but NOT a specialist, send them to their default dashboard
-
-      router.replace('/dashboard')
-
+      router.replace('/');
+      return;
     }
 
-  }, [status, session, router])
+    if (status === 'authenticated' && session?.user) {
+      if (session.user.role !== 'SPECIALIST') {
+        router.replace('/dashboard');
+        return;
+      }
 
+      const validateSession = async () => {
+        try {
+          setIsValidating(false);
+        } catch (err) {
+          console.error("Validation error:", err);
+          setErrorMessage("Session validation failed.");
+          setTimeout(() => signOut({ callbackUrl: '/login' }), 1500);
+        }
+      };
 
+      validateSession();
+    }
+  }, [status, session, router]);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-    setIsSidebarOpen((prev) => !prev)
-
-  }
-
-
-
-  // 2. THE SECURITY GATE: 
-
-  // If loading OR if the role is not yet confirmed as SPECIALIST, 
-
-  // we return ONLY the loading screen.
-
-  if (status === 'loading' || status === 'unauthenticated' || session?.user?.role !== 'SPECIALIST') {
-
+  if (status === 'loading' || isValidating) {
     return (
-
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-50">
-
-        <div className="flex flex-col items-center gap-4">
-
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-
-          <div className="text-center">
-
-            <p className="text-lg font-bold text-slate-800">Hospital Secure Gate</p>
-
-            <p className="text-sm text-slate-500 font-medium">Verifying Staff Credentials...</p>
-
-          </div>
-
-        </div>
-
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
       </div>
-
-    )
-
+    );
   }
 
-
-
-  // 3. AUTHORIZED CONTENT:
-
-  // This part of the code is ONLY reached if (status === 'authenticated' && role === 'SPECIALIST')
+  if (errorMessage || !session) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-red-50">
+        <AlertTriangle className="h-16 w-16 text-red-600" />
+      </div>
+    );
+  }
 
   return (
-
-    <div style={{ 
-
-      display: 'flex', 
-
-      height: '100vh', 
-
-      width: '100vw', 
-
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
       overflow: 'hidden',
-
-      backgroundColor: '#f8fafc' 
-
+      backgroundColor: '#f8fafc'
     }}>
+      {/* FIXED: Added setIsOpen prop here */}
+      <DoctorSidebar 
+        isOpen={isSidebarOpen} 
+        setIsOpen={setIsSidebarOpen} 
+      />
 
-      
-
-      {/* Sidebar is only rendered after authorization */}
-
-      <DoctorSidebar isOpen={isSidebarOpen} />
-
-
-
-      <div style={{ 
-
-        flex: 1, 
-
-        display: 'flex', 
-
-        flexDirection: 'column', 
-
-        minWidth: 0, 
-
-        position: 'relative'
-
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        position: 'relative',
+        /* The flex: 1 ensures this container grows/shrinks with the sidebar */
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
-
-        
-
-        <DoctorHeader 
-
-          toggleSidebar={toggleSidebar} 
-
-          isSidebarOpen={isSidebarOpen} 
-
+        <DoctorHeader
+          toggleSidebar={toggleSidebar}
+          isSidebarOpen={isSidebarOpen}
         />
 
-
-
-        <main style={{ 
-
-          flex: 1, 
-
-          overflowY: 'auto', 
-
-          padding: '32px',
-
+        <main style={{
+          flex: 1,
+          overflowY: 'auto',
+          paddingTop: '-42px',
           scrollBehavior: 'smooth',
-
           backgroundImage: 'radial-gradient(#e2e8f0 0.5px, transparent 0.5px)',
-
           backgroundSize: '24px 24px'
-
         }}>
-
-          <div style={{ 
-
-            maxWidth: '1400px', 
-
+          <div style={{
+            maxWidth: '1400px',
             margin: '0 auto',
-
-            animation: 'fadeIn 0.4s ease-out' 
-
+            animation: 'fadeIn 0.4s ease-out'
           }}>
-
             {children}
-
           </div>
-
         </main>
 
-
-
         <style jsx global>{`
-
           @keyframes fadeIn {
-
             from { opacity: 0; transform: translateY(10px); }
-
             to { opacity: 1; transform: translateY(0); }
-
           }
-
-          main::-webkit-scrollbar { width: 8px; }
-
-          main::-webkit-scrollbar-track { background: #f1f5f9; }
-
-          main::-webkit-scrollbar-thumb { 
-
-            background: #cbd5e1; 
-
-            border-radius: 10px; 
-
-          }
-
-          main::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         `}</style>
-
       </div>
-
     </div>
-
-  )
-
-} 
+  );
+}

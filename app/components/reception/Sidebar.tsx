@@ -1,82 +1,163 @@
-// components/reception/Sidebar.tsx
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, UserPlus, Search, Calendar, ClipboardList, 
   Ticket, Bed, Users, HelpCircle, FileBarChart, 
-  CreditCard, Ambulance, Printer 
+  CreditCard, Ambulance, Printer, History, CalendarCheck, Stethoscope,
+  Database // Added for Backup
 } from 'lucide-react';
-import Link from 'next/link';
 
-const menuItems = [
-  { group: "Main", items: [
-    { name: 'Dashboard Home', icon: LayoutDashboard, href: '/reception-triage' },
-    { name: 'Patient Recored', icon: UserPlus, href: '/reception-triage/recored' },
-    { name: 'Billing & Payment', icon: Search, href: '/reception-triage/billing' },
-  ]},
-  { group: "Appointments & OP", items: [
-    { name: 'Booking', icon: Calendar, href: '/reception-triage/booking' },
-    { name: 'Appointment List', icon: ClipboardList, href: '/reception-triage/appointments' },
-    { name: 'OP Ticket', icon: Ticket, href: '/reception-triage/op-ticket' },
-  ]},
-  { group: "IP & Bed Management", items: [
-    { name: 'IP Admission', icon: Bed, href: '/reception-triage/ip-admission' },
-    { name: 'Bed Availability', icon: Bed, href: '/reception-triage/beds' },
-    { name: 'Visitor Management', icon: Users, href: '/reception-triage/visitors' },
-  ]},
-  { group: "Operations", items: [
-    { name: 'Enquiry', icon: HelpCircle, href: '/reception-triage/enquiry' },
-    { name: 'Advance Payments', icon: CreditCard, href: '/reception-triage/payments' },
-    { name: 'ID Card Printing', icon: Printer, href: '/reception-triage/id-cards' },
-    { name: 'Ambulance Requests', icon: Ambulance, href: '/reception-triage/ambulance' },
-    { name: 'Reports', icon: FileBarChart, href: '/reception-triage/reports' },
-  ]}
+interface SidebarProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+const MENU_ITEMS = [
+  { 
+    group: "Main", 
+    items: [
+      { name: 'Dashboard', icon: LayoutDashboard, href: '/reception-triage' },
+      { name: 'Patient Record', icon: UserPlus, href: '/reception-triage/record' },
+      { name: 'Billing', icon: Search, href: '/reception-triage/billing' },
+    ]
+  },
+  
+  { 
+    group: "Follow-up Care", 
+    items: [
+      { name: 'Recall List', icon: History, href: '/reception-triage/follow-up/recalls' },
+      { name: 'Chronic Care', icon: Stethoscope, href: '/reception-triage/follow-up/chronic' },
+      { name: 'Post-Op Followup', icon: CalendarCheck, href: '/reception-triage/follow-up/post-op' },
+    ]
+  },
+   { 
+    group: "Appointments", 
+    items: [
+      { name: 'New Booking', icon: Calendar, href: '/reception-triage/booking' },
+      { name: 'Daily Schedule', icon: ClipboardList, href: '/reception-triage/appointments' },
+      { name: 'OP Ticket', icon: Ticket, href: '/reception-triage/op-ticket' },
+    ]
+  },
+  { 
+    group: "In-Patient", 
+    items: [
+      { name: 'Admission', icon: Bed, href: '/reception-triage/ip-admission' },
+      { name: 'Beds & Wards', icon: Bed, href: '/reception-triage/beds' },
+    ]
+  },
+  { 
+    group: "Operations", 
+    items: [
+      { name: 'Payments', icon: CreditCard, href: '/reception-triage/payments' },
+      { name: 'Reports', icon: FileBarChart, href: '/reception-triage/reports' },
+      { name: 'Backup', icon: Database, href: '/reception-triage/backup' }, // Added Backup Item
+    ]
+  }
 ];
 
-export default function Sidebar() {
-  return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-full border-r border-slate-800">
-      {/* Sidebar Header */}
-      <div className="p-6 border-b border-slate-800 flex items-center gap-2">
-        <div className="bg-blue-600 p-1.5 rounded-lg">
-          <div className="w-5 h-5 bg-white rounded-sm" />
-        </div>
-        <span className="text-white font-bold text-xl tracking-tight">HMS Core</span>
-      </div>
-      
-      {/* Navigation Area with Scroll Indicator Hidden */}
-      <nav 
-        className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide"
-        style={{ 
-          msOverflowStyle: 'none', 
-          scrollbarWidth: 'none' 
-        }}
-      >
-        {/* Webkit Specific CSS to hide scrollbar */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-          }
-        `}} />
+export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+  const pathname = usePathname()
+  const [time, setTime] = useState("")
 
-        {menuItems.map((group) => (
-          <div key={group.group}>
-            <p className="px-3 text-[10px] uppercase font-semibold text-slate-500 mb-2 tracking-widest">
-              {group.group}
-            </p>
-            <div className="space-y-1">
-              {group.items.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-800 hover:text-white transition-all text-sm group"
-                >
-                  <item.icon size={18} className="text-slate-400 group-hover:text-blue-400" />
-                  {item.name}
+  useEffect(() => {
+    const updateTime = () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    updateTime();
+    const timer = setInterval(updateTime, 60000);
+    return () => clearInterval(timer);
+  }, [])
+
+  return (
+    <aside style={{ 
+      width: isOpen ? '240px' : '70px',
+      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      backgroundColor: '#f8fafc',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRight: '1px solid #e2e8f0',
+      zIndex: 50,
+      flexShrink: 0
+    }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .nav-area { scrollbar-width: none; -ms-overflow-style: none; }
+        .nav-area::-webkit-scrollbar { width: 2px; display: none; }
+        .nav-area:hover::-webkit-scrollbar { display: block; }
+        .nav-area::-webkit-scrollbar-track { background: transparent; margin: 20px 0; }
+        .nav-area::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+      `}} />
+      
+      {/* Header */}
+      <div style={{ padding: '16px 12px', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'flex-start' : 'center' }}>
+        {isOpen ? (
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Reception Portal
+          </span>
+        ) : (
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="nav-area" style={{ flex: 1, padding: '0 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+        {MENU_ITEMS.map((group, idx) => (
+          <div key={idx} style={{ marginBottom: '14px' }}>
+            {isOpen && (
+              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px', paddingLeft: '10px' }}>
+                {group.group}
+              </p>
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link 
+                  key={item.name} 
+                  href={item.href} 
+                  title={!isOpen ? item.name : ""}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'flex-start' : 'center',
+                    padding: '8px 10px', borderRadius: '8px', textDecoration: 'none',
+                    backgroundColor: isActive ? '#eff6ff' : 'transparent',
+                    color: isActive ? '#1e293b' : '#64748b',
+                    marginBottom: '2px', transition: 'all 0.15s ease',
+                    border: isActive ? '1px solid #dbeafe' : '1px solid transparent'
+                  }}>
+                  <item.icon size={18} style={{ 
+                    marginRight: isOpen ? '10px' : '0',
+                    color: isActive ? '#2563eb' : '#64748b',
+                    strokeWidth: isActive ? 2.5 : 2
+                  }} />
+                  {isOpen && <span style={{ fontSize: '0.85rem', fontWeight: isActive ? 700 : 500 }}>{item.name}</span>}
                 </Link>
-              ))}
-            </div>
+              )
+            })}
           </div>
         ))}
       </nav>
+
+      {/* Footer */}
+      <div style={{ padding: '12px', borderTop: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'space-between' : 'center' }}>
+        {isOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.55rem', color: '#94a3b8', fontWeight: 700 }}>TERMINAL ACTIVE</span>
+            <span style={{ fontSize: '0.75rem', color: '#1e293b', fontWeight: 600 }}>{time}</span>
+          </div>
+        )}
+        <button 
+          onClick={() => setIsOpen(!isOpen)} 
+          style={{ 
+            background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', 
+            width: '28px', height: '28px', cursor: 'pointer', display: 'flex', 
+            alignItems: 'center', justifyContent: 'center' 
+          }}>
+          <span style={{ 
+            transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)', 
+            transition: 'transform 0.3s ease', fontSize: '12px', fontWeight: 'bold', color: '#000' 
+          }}>«</span>
+        </button>
+      </div>
     </aside>
-  );
+  )
 }
