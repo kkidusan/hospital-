@@ -130,7 +130,7 @@ export default function SpecialistEquipmentDashboard() {
                         <div className="flex justify-end items-center gap-4">
                           {processingId === log.id ? (
                             <div className="flex items-center gap-2 px-4 py-2 text-blue-600 font-black text-[10px] uppercase">
-                              <Loader2 size={14} className="animate-spin" /> Processing
+                              <Loader2 size={14} className="animate-spin" /> 1Processing
                             </div>
                           ) : (
                             <div className="flex gap-2">
