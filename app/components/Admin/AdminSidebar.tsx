@@ -42,6 +42,14 @@ const menuItems = [
       { name: "Prescriptions", href: "/admin/pharmacy/prescriptions" },
     ] 
   },
+  { 
+    title: "Inventory", 
+    icon: <Package size={20} />, 
+    subItems: [
+      { name: "Equipment", href: "/admin/inventory/equipment" },
+      { name: "Manage Stock", href: "/admin/inventory/stock" },
+    ] 
+  },
   { title: "Billing", icon: <Receipt size={20} />, path: "/admin/billing" },
   { title: "Security", icon: <ShieldCheck size={20} />, path: "/admin/security" },
   { title: "Settings", icon: <Settings size={20} />, path: "/admin/settings" },
@@ -51,6 +59,7 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarPro
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
+  // Auto-expand menus if a sub-item is active
   useEffect(() => {
     menuItems.forEach(item => {
       if (item.subItems?.some(sub => pathname === sub.href)) {

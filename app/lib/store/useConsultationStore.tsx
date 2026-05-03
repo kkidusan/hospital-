@@ -2,6 +2,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+// 1. Define the Doctor Interface
+export interface DoctorInfo {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface LabRequestDraft {
   selectedTests: string[];
   clinicalIndication: string;
@@ -21,10 +28,14 @@ export interface FinalizeDraft {
 }
 
 interface ConsultationState {
+  // Data State
+  doctor: DoctorInfo;
   labDraft: LabRequestDraft;
   radiologyDraft: RadiologyRequestDraft;
   finalizeDraft: FinalizeDraft;
 
+  // Actions
+  setDoctor: (doctor: DoctorInfo) => void;
   setLabDraft: (data: Partial<LabRequestDraft>) => void;
   toggleLabTest: (testName: string) => void;
   setRadiologyDraft: (data: Partial<RadiologyRequestDraft>) => void;
@@ -32,11 +43,19 @@ interface ConsultationState {
   setOtherUltrasound: (value: string) => void;
   setFinalizeDraft: (data: Partial<FinalizeDraft>) => void;
 
+  // Resets
   resetLabDraft: () => void;
   resetRadiologyDraft: () => void;
   resetFinalizeDraft: () => void;
   resetAllDrafts: () => void;
 }
+
+// Initial States
+const initialDoctor: DoctorInfo = {
+  id: "",
+  name: "",
+  email: "",
+};
 
 const initialLab: LabRequestDraft = {
   selectedTests: [],
@@ -59,9 +78,16 @@ const initialFinalize: FinalizeDraft = {
 export const useConsultationStore = create<ConsultationState>()(
   persist(
     (set) => ({
+      // --- STATE ---
+      doctor: initialDoctor,
       labDraft: initialLab,
       radiologyDraft: initialRadiology,
       finalizeDraft: initialFinalize,
+
+      // --- ACTIONS ---
+      
+      // Set the logged-in doctor
+      setDoctor: (doctor) => set({ doctor }),
 
       setLabDraft: (data) =>
         set((state) => ({ labDraft: { ...state.labDraft, ...data } })),
@@ -93,6 +119,7 @@ export const useConsultationStore = create<ConsultationState>()(
       setFinalizeDraft: (data) =>
         set((state) => ({ finalizeDraft: { ...state.finalizeDraft, ...data } })),
 
+      // --- RESETS ---
       resetLabDraft: () => set({ labDraft: initialLab }),
       resetRadiologyDraft: () => set({ radiologyDraft: initialRadiology }),
       resetFinalizeDraft: () => set({ finalizeDraft: initialFinalize }),
@@ -102,6 +129,8 @@ export const useConsultationStore = create<ConsultationState>()(
           labDraft: initialLab,
           radiologyDraft: initialRadiology,
           finalizeDraft: initialFinalize,
+          // Note: Usually we don't reset the doctor on "resetAllDrafts" 
+          // because the doctor stays the same throughout the session.
         }),
     }),
     {

@@ -6,7 +6,7 @@ import {
   Plus, Clock, CheckCircle2, XCircle, 
   PackageCheck, Loader2, Hand, ArrowRight 
 } from 'lucide-react';
-import LabWithdrawalForm from "./LabWithdrawalForm";
+import ReceptionWithdrawalForm from './ReceptionWithdrawalForm';
 
 type WithdrawalRequest = {
   id: string;
@@ -17,7 +17,7 @@ type WithdrawalRequest = {
   material: { name: string };
 };
 
-export default function SpecialistEquipmentDashboard() {
+export default function ReceptionEquipmentDashboard() {
   const { data: session } = useSession();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -40,12 +40,9 @@ export default function SpecialistEquipmentDashboard() {
     }
   };
 
-  useEffect(() => { 
-    fetchData(); 
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // --- FILTER LOGIC ---
-  // Filters the full ledger to only show requests made by the logged-in user
+  // Filter to show only requests made by the current Triage staff member
   const myRequests = useMemo(() => {
     if (!session?.user?.name) return [];
     return withdrawals.filter(req => req.requestedBy === session.user?.name);
@@ -69,11 +66,10 @@ export default function SpecialistEquipmentDashboard() {
     const config: Record<string, { color: string; icon: any }> = {
       PENDING: { color: "bg-amber-50 text-amber-600 border-amber-100", icon: Clock },
       APPROVED: { color: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: CheckCircle2 },
-      WITHDRAW_REQUESTED: { color: "bg-purple-50 text-purple-600 border-purple-200 animate-pulse", icon: Hand },
-      WITHDRAWN: { color: "bg-indigo-50 text-indigo-600 border-indigo-100", icon: PackageCheck },
+      WITHDRAW_REQUESTED: { color: "bg-teal-50 text-teal-600 border-teal-200 animate-pulse", icon: Hand },
+      WITHDRAWN: { color: "bg-slate-50 text-slate-600 border-slate-100", icon: PackageCheck },
       REJECTED: { color: "bg-rose-50 text-rose-600 border-rose-100", icon: XCircle },
     };
-
     const style = config[status] || config.PENDING;
     const Icon = style.icon;
 
@@ -86,35 +82,34 @@ export default function SpecialistEquipmentDashboard() {
 
   return (
     <div className="min-h-screen bg-[#fcfcfd] flex flex-col font-sans text-slate-900">
-      {/* HEADER */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 px-10 py-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black italic tracking-tighter uppercase">
-            Specialist<span className="text-blue-600">Vault</span>
+            Triage<span className="text-teal-600">Vault</span>
           </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.4em]">My Asset Requisitions</p>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.4em]">Reception Supply Log</p>
         </div>
         <button 
           onClick={() => setIsDrawerOpen(true)}
-          className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-blue-100"
+          className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-teal-600 transition-all active:scale-95 shadow-lg shadow-teal-100"
         >
-          <Plus size={16} /> New Request
+          <Plus size={16} /> Request Supplies
         </button>
       </header>
 
       <main className="p-10 max-w-7xl mx-auto w-full">
         {loading ? (
           <div className="flex flex-col items-center py-40 gap-4">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Loading Your Ledger...</span>
+            <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Syncing personal records...</span>
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50/50 text-[10px] uppercase font-black text-slate-400 tracking-widest">
                 <tr>
-                  <th className="px-8 py-5">Timestamp</th>
-                  <th className="px-8 py-5">Material Item</th>
+                  <th className="px-8 py-5">Date</th>
+                  <th className="px-8 py-5">Supply Item</th>
                   <th className="px-8 py-5 text-right">Status & Action</th>
                 </tr>
               </thead>
@@ -128,20 +123,20 @@ export default function SpecialistEquipmentDashboard() {
                       </td>
                       <td className="px-8 py-5">
                         <div className="text-sm font-bold text-slate-800">{log.material?.name}</div>
-                        <div className="text-[10px] font-black text-blue-500 uppercase italic">Qty: {log.quantity}</div>
+                        <div className="text-[10px] font-black text-teal-600 uppercase italic">Quantity: {log.quantity}</div>
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex justify-end items-center gap-4">
                           {processingId === log.id ? (
-                            <div className="flex items-center gap-2 px-4 py-2 text-blue-600 font-black text-[10px] uppercase">
-                              <Loader2 size={14} className="animate-spin" /> Processing
+                            <div className="flex items-center gap-2 px-4 py-2 text-teal-600 font-black text-[10px] uppercase">
+                              <Loader2 size={14} className="animate-spin" /> Updating
                             </div>
                           ) : (
                             <div className="flex gap-2">
                               {log.status === "APPROVED" && (
                                 <button 
                                   onClick={() => handleStatusUpdate(log.id, "WITHDRAW_REQUESTED")}
-                                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-slate-900 transition-all"
+                                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-slate-900 transition-all"
                                 >
                                   Withdraw <ArrowRight size={12} />
                                 </button>
@@ -157,8 +152,8 @@ export default function SpecialistEquipmentDashboard() {
                   <tr>
                     <td colSpan={3} className="px-8 py-20 text-center">
                        <div className="flex flex-col items-center opacity-20">
-                          <Clock size={48} className="mb-4" />
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Personal Requests Found</p>
+                          <Clock size={40} className="mb-2" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">No Supply Requests Found</p>
                        </div>
                     </td>
                   </tr>
@@ -169,12 +164,11 @@ export default function SpecialistEquipmentDashboard() {
         )}
       </main>
 
-      {/* DRAWER COMPONENT */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl animate-in slide-in-from-right duration-300">
-             <LabWithdrawalForm 
+             <ReceptionWithdrawalForm 
                 materials={materials} 
                 onClose={() => setIsDrawerOpen(false)} 
                 onSuccess={() => { setIsDrawerOpen(false); fetchData(); }} 

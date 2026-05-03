@@ -19,41 +19,42 @@ const MENU_ITEMS = [
   { 
     group: "Main", 
     items: [
-      { name: 'Dashboard', icon: LayoutDashboard, href: '/reception-triage' },
-      { name: 'Patient Record', icon: UserPlus, href: '/reception-triage/record' },
-      { name: 'Billing', icon: Search, href: '/reception-triage/billing' },
+      { name: 'Dashboard', icon: LayoutDashboard, href: '/reception' },
+      { name: 'Patient Record', icon: UserPlus, href: '/reception/record' },
+      { name: 'Billing', icon: Search, href: '/reception/billing' },
     ]
   },
   
   { 
     group: "Follow-up Care", 
     items: [
-      { name: 'Recall List', icon: History, href: '/reception-triage/follow-up/recalls' },
-      { name: 'Chronic Care', icon: Stethoscope, href: '/reception-triage/follow-up/chronic' },
-      { name: 'Post-Op Followup', icon: CalendarCheck, href: '/reception-triage/follow-up/post-op' },
+      { name: 'Recall List', icon: History, href: '/reception/follow-up/recalls' },
+      { name: 'Chronic Care', icon: Stethoscope, href: '/reception/follow-up/chronic' },
+      { name: 'Post-Op Followup', icon: CalendarCheck, href: '/reception/follow-up/post-op' },
     ]
   },
    { 
     group: "Appointments", 
     items: [
-      { name: 'New Booking', icon: Calendar, href: '/reception-triage/booking' },
-      { name: 'Daily Schedule', icon: ClipboardList, href: '/reception-triage/appointments' },
-      { name: 'OP Ticket', icon: Ticket, href: '/reception-triage/op-ticket' },
+      { name: 'New Booking', icon: Calendar, href: '/reception/booking' },
+      { name: 'Daily Schedule', icon: ClipboardList, href: '/reception/appointments' },
+      { name: 'OP Ticket', icon: Ticket, href: '/reception/op-ticket' },
     ]
   },
   { 
     group: "In-Patient", 
     items: [
-      { name: 'Admission', icon: Bed, href: '/reception-triage/ip-admission' },
-      { name: 'Beds & Wards', icon: Bed, href: '/reception-triage/beds' },
+      { name: 'Admission', icon: Bed, href: '/reception/ip-admission' },
+      { name: 'Beds & Wards', icon: Bed, href: '/reception/beds' },
     ]
   },
   { 
     group: "Operations", 
     items: [
-      { name: 'Payments', icon: CreditCard, href: '/reception-triage/payments' },
-      { name: 'Reports', icon: FileBarChart, href: '/reception-triage/reports' },
-      { name: 'Backup', icon: Database, href: '/reception-triage/backup' }, // Added Backup Item
+      { name: 'Payments', icon: CreditCard, href: '/reception/payments' },
+      { name: 'Equipment', icon: CreditCard, href: '/reception/equipment' },
+      { name: 'Reports', icon: FileBarChart, href: '/reception/reports' },
+      { name: 'Backup', icon: Database, href: '/reception/backup' }, // Added Backup Item
     ]
   }
 ];

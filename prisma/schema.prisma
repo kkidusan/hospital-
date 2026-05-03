@@ -17,6 +17,8 @@ enum Role {
   RADIOLOGY
   BILLING
   FINANCIAL
+  PHARMACIST
+  INVENTORY
 }
 
 enum ServiceCategory {
@@ -154,22 +156,11 @@ enum WithdrawalStatus {
   APPROVED
   REJECTED
   CANCELLED
-  WITHDRAW_REQUESTED // New stage: Technician has item in hand
-  WITHDRAWN          // Final stage: Stock is officially deducted
+  WITHDRAW_REQUESTED
+  WITHDRAWN
 }
 
-// ====================== MODELS ======================
-
-model PatientSequence {
-  id      String @id @default(cuid())
-  loc     String
-  year    Int
-  month   Int
-  lastSeq Int    @default(0)
-
-  @@unique([loc, year, month])
-  @@map("patient_sequences")
-}
+// ====================== USER & AUTH ======================
 
 model User {
   id                  String    @id @default(cuid())
@@ -187,22 +178,27 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  consultationsCreated     Consultation[]          @relation("ConsultationCreatedBy")
-  labRequestsCreated       LabRequest[]            @relation("LabRequestCreatedBy")
-  radiologyRequestsCreated RadiologyRequest[]      @relation("RadiologyRequestCreatedBy")
-  prescriptionsCreated     Prescription[]          @relation("PrescriptionCreatedBy")
-  invoicesCreated          Invoice[]               @relation("InvoiceCreatedBy")
-  radiologyReports         RadiologyRequest[]      @relation("RadiologyReportedBy")
-  auditLogs                AuditLog[]
-  admittingAdmissions      Admission[]             @relation("AdmittingDoctor")
-  appointmentsCreated      Appointment[]           @relation("AppointmentDoctor")
-  notifications            Notification[]          @relation("UserNotifications")
-  performedLabTests        LabRequestTest[]        @relation("PerformedBy")
-  completedLabRequests     LabRequest[]            @relation("LabRequestCompletedBy")
-  labResultNotifications   LabResultNotification[] @relation("LabResultNotifications")
+  consultationsCreated      Consultation[]     @relation("ConsultationCreatedBy")
+  labRequestsCreated        LabRequest[]       @relation("LabRequestCreatedBy")
+  radiologyRequestsCreated RadiologyRequest[] @relation("RadiologyRequestCreatedBy")
+  prescriptionsCreated      Prescription[]     @relation("PrescriptionCreatedBy")
+  invoicesCreated           Invoice[]          @relation("InvoiceCreatedBy")
+  radiologyReports          RadiologyRequest[] @relation("RadiologyReportedBy")
+  auditLogs                 AuditLog[]
+  admittingAdmissions        Admission[]        @relation("AdmittingDoctor")
+  appointmentsCreated        Appointment[]      @relation("AppointmentDoctor")
+  notifications              Notification[]     @relation("UserNotifications")
+  performedLabTests          LabRequestTest[]   @relation("PerformedBy")
+  completedLabRequests      LabRequest[]       @relation("LabRequestCompletedBy")
+  labResultNotifications    LabResultNotification[] @relation("LabResultNotifications")
+  
+  // Relation to Drafts
+  consultationDrafts        ConsultationDraft[] @relation("DoctorDrafts")
 
   @@map("users")
 }
+
+// ====================== PATIENT CORE ======================
 
 model Patient {
   id             String    @id @default(cuid())
@@ -239,40 +235,145 @@ model Patient {
   patientHistory         PatientHistory[]
   admissions             Admission[]
   labResultNotifications LabResultNotification[]
+  
+  // Relation to Drafts
+  consultationDrafts     ConsultationDraft[]
 
   @@index([mrn])
   @@index([phoneNumber])
   @@index([fullName])
-  @@index([lastVisitDate])
   @@map("patients")
 }
 
-model LabRequest {
-  id                String           @id @default(cuid())
-  patientId         String
-  requestedById     String?
-  requestedByName   String?
-  clinicalIndication String?          @db.Text
-  labNotes          String?          @db.Text
-  status            LabRequestStatus @default(PENDING_PAYMENT)
-  totalAmount       Float            @default(0)
-  completedAt       DateTime?
-  completedById     String?
-  completedByName   String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+// ====================== CONSULTATION DRAFTS ======================
 
-  patient       Patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  requestedBy   User?                   @relation("LabRequestCreatedBy", fields: [requestedById], references: [id])
-  completedBy   User?                   @relation("LabRequestCompletedBy", fields: [completedById], references: [id])
-  tests         LabRequestTest[]
-  invoiceItems  InvoiceItem[]
-  notifications LabResultNotification[]
+model ConsultationDraft {
+  id        String   @id @default(cuid())
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Foreign Keys
+  doctorId  String
+  patientId String
+
+  // Relations
+  doctor  User    @relation("DoctorDrafts", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@map("consultation_drafts")
+}
+
+// ====================== INVENTORY & LOGISTICS ======================
+
+model Zone {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  status      String     @default("Active")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  shelves  Shelf[]
+  materials Material[]
+
+  @@map("zones")
+}
+
+model Shelf {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  level     String   
+  capacity  Int      @default(100)
+  status    String   @default("Active")
+  zoneId    String
+  zone      Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  
+  materials Material[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([zoneId])
+  @@map("shelves")
+}
+
+model Material {
+  id               String   @id @default(cuid())
+  sku              String   @unique
+  name             String
+  category         String   // Consumables, Laboratory, Surgical, etc.
+  
+  qtyPerCarton     Int      @default(0) 
+  qtyPerBox        Int      @default(0) 
+  
+  totalInBaseUnits Int      @default(0) 
+  baseUnit         String   @default("Piece")
+  
+  zoneId           String?
+  zone             Zone?    @relation(fields: [zoneId], references: [id])
+  shelfId          String?
+  shelf            Shelf?   @relation(fields: [shelfId], references: [id])
+  
+  minThreshold       Int      @default(10)
+  maxQuotaPerRequest Int      @default(0)
+  requiresApproval   Boolean  @default(false)
+  
+  expiryDate       DateTime?
+  status           String   @default("Active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  withdrawals      MaterialWithdrawal[]
+
+  @@index([zoneId])
+  @@index([shelfId])
+  @@map("materials")
+}
+
+model MaterialWithdrawal {
+  id          String           @id @default(cuid())
+  materialId  String
+  requestedBy String
+  department  String           @default("Laboratory")
+  quantity    Int
+  status      WithdrawalStatus @default(PENDING)
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  material    Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([materialId])
+  @@map("material_withdrawals")
+}
+
+// ====================== CLINICAL MODELS ======================
+
+model LabRequest {
+  id                 String           @id @default(cuid())
+  patientId          String
+  requestedById      String?
+  requestedByName    String?
+  clinicalIndication String?          @db.Text
+  labNotes           String?          @db.Text
+  status             LabRequestStatus @default(PENDING_PAYMENT)
+  totalAmount        Float            @default(0)
+  completedAt        DateTime?
+  completedById      String?
+  completedByName    String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  patient            Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  requestedBy        User?            @relation("LabRequestCreatedBy", fields: [requestedById], references: [id])
+  completedBy        User?            @relation("LabRequestCompletedBy", fields: [completedById], references: [id])
+  tests              LabRequestTest[]
+  invoiceItems       InvoiceItem[]
+  notifications      LabResultNotification[]
 
   @@index([patientId])
-  @@index([status])
-  @@index([requestedById])
-  @@index([completedById])
   @@map("lab_requests")
 }
 
@@ -294,37 +395,7 @@ model LabRequestTest {
   labRequest      LabRequest @relation(fields: [labRequestId], references: [id], onDelete: Cascade)
   performedByUser User?      @relation("PerformedBy", fields: [performedById], references: [id])
 
-  @@index([labRequestId])
-  @@index([performedById])
   @@map("lab_request_tests")
-}
-
-model LabResultNotification {
-  id              String           @id @default(cuid())
-  labRequestId    String
-  patientId       String
-  patientName     String
-  mrn             String
-  completedById   String
-  completedByName String
-  title           String
-  message         String           @db.Text
-  type            NotificationType @default(LAB_REQUEST)
-  isRead          Boolean          @default(false)
-  readAt          DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  labRequest LabRequest @relation(fields: [labRequestId], references: [id], onDelete: Cascade)
-  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  user       User       @relation("LabResultNotifications", fields: [completedById], references: [id])
-
-  @@index([labRequestId])
-  @@index([patientId])
-  @@index([completedById])
-  @@index([isRead])
-  @@index([createdAt])
-  @@map("lab_result_notifications")
 }
 
 model RadiologyRequest {
@@ -350,12 +421,10 @@ model RadiologyRequest {
   reportedBy   User?         @relation("RadiologyReportedBy", fields: [reportedById], references: [id])
   invoiceItems InvoiceItem[]
 
-  @@index([patientId])
-  @@index([status])
-  @@index([requestedById])
-  @@index([reportedById])
   @@map("radiology_requests")
 }
+
+// ====================== INFRASTRUCTURE ======================
 
 model Ward {
   id        String   @id @default(cuid())
@@ -398,27 +467,25 @@ model Bed {
 
 model Admission {
   id                String          @id @default(cuid())
-  patientId         String
-  admissionDate     DateTime        @default(now())
-  dischargeDate     DateTime?
+  patientId          String
+  admissionDate      DateTime        @default(now())
+  dischargeDate      DateTime?
   source            AdmissionSource @default(OPD)
   admittingDoctorId String?
-  bedId             String?
-  bed               Bed?            @relation(fields: [bedId], references: [id])
+  bedId              String?
+  bed                Bed?            @relation(fields: [bedId], references: [id])
   status            AdmissionStatus @default(ACTIVE)
-  dischargeType     DischargeType?
+  dischargeType      DischargeType?
   dischargeSummary  String?         @db.Text
   notes             String?         @db.Text
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   admittingDoctor User?          @relation("AdmittingDoctor", fields: [admittingDoctorId], references: [id])
-  invoices        Invoice[]
+  invoices         Invoice[]
   consultations   Consultation[] @relation("AdmissionConsultations")
 
-  @@index([patientId])
-  @@index([status])
   @@map("admissions")
 }
 
@@ -438,9 +505,6 @@ model Consultation {
   admission Admission? @relation("AdmissionConsultations", fields: [admissionId], references: [id])
   createdBy User?      @relation("ConsultationCreatedBy", fields: [createdById], references: [id])
 
-  @@index([patientId])
-  @@index([admissionId])
-  @@index([createdById])
   @@map("consultations")
 }
 
@@ -477,6 +541,8 @@ model Queue {
   @@map("queues")
 }
 
+// ====================== BILLING ======================
+
 model ServiceDefinition {
   id            String          @id @default(cuid())
   name          String          @unique
@@ -492,12 +558,12 @@ model ServiceDefinition {
 }
 
 model PriceHistory {
-  id           String            @id @default(cuid())
+  id           String   @id @default(cuid())
   serviceId    String
   oldPrice     Float
   newPrice     Float
   changeReason String?
-  changedAt    DateTime          @default(now())
+  changedAt    DateTime @default(now())
 
   service ServiceDefinition @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
@@ -518,38 +584,38 @@ model Invoice {
   paidAt            DateTime?
   relatedRequestId  String?
   relatedRequestType String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   patient   Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   admission Admission?    @relation(fields: [admissionId], references: [id])
   createdBy User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   items     InvoiceItem[]
 
-  @@index([patientId])
-  @@index([relatedRequestId])
   @@map("invoices")
 }
 
 model InvoiceItem {
-  id                 String          @id @default(cuid())
-  invoiceId          String
-  serviceName        String
-  category           ServiceCategory
-  quantity           Float           @default(1)
-  total              Float
-  isOverride         Boolean         @default(false)
-  overrideReason     String?
-  labRequestId       String?
+  id                  String          @id @default(cuid())
+  invoiceId           String
+  serviceName         String
+  category            ServiceCategory
+  quantity            Float           @default(1)
+  total               Float
+  isOverride          Boolean         @default(false)
+  overrideReason      String?
+  labRequestId        String?
   radiologyRequestId String?
-  createdAt          DateTime        @default(now())
+  createdAt           DateTime        @default(now())
 
-  invoice          Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  labRequest       LabRequest?       @relation(fields: [labRequestId], references: [id], onDelete: SetNull)
+  invoice            Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  labRequest         LabRequest?       @relation(fields: [labRequestId], references: [id], onDelete: SetNull)
   radiologyRequest RadiologyRequest? @relation(fields: [radiologyRequestId], references: [id], onDelete: SetNull)
 
   @@map("invoice_items")
 }
+
+// ====================== PHARMACY & APPOINTMENTS ======================
 
 model Prescription {
   id             String   @id @default(cuid())
@@ -568,29 +634,37 @@ model Prescription {
 }
 
 model Appointment {
-  id              String              @id @default(cuid())
-  patientId       String
-  doctorId        String?
-  doctorName      String?
-  appointmentDate DateTime
-  reason          String?
-  type            AppointmentType     @default(FOLLOW_UP)
-  priority        AppointmentPriority @default(ROUTINE)
-  status          AppointmentStatus   @default(SCHEDULED)
-  notes           String?             @db.Text
+  id               String              @id @default(cuid())
+  patientId        String
+  doctorId         String?
+  doctorName       String?
+  appointmentDate  DateTime
+  reason           String?
+  type             AppointmentType     @default(FOLLOW_UP)
+  priority         AppointmentPriority @default(ROUTINE)
+  status           AppointmentStatus   @default(SCHEDULED)
+  notes            String?             @db.Text
   followUpCategory FollowUpCategory?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor  User?   @relation("AppointmentDoctor", fields: [doctorId], references: [id])
 
-  @@index([patientId])
-  @@index([doctorId])
-  @@index([appointmentDate])
-  @@index([status])
-  @@index([followUpCategory])
   @@map("appointments")
+}
+
+// ====================== SYSTEM UTILS ======================
+
+model PatientSequence {
+  id      String @id @default(cuid())
+  loc     String
+  year    Int
+  month   Int
+  lastSeq Int    @default(0)
+
+  @@unique([loc, year, month])
+  @@map("patient_sequences")
 }
 
 model PatientHistory {
@@ -603,8 +677,6 @@ model PatientHistory {
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
-  @@index([patientId])
-  @@index([archivedAt])
   @@map("patient_histories")
 }
 
@@ -619,48 +691,30 @@ model AuditLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
   @@map("audit_logs")
 }
 
-// ====================== INVENTORY MODELS ======================
+model LabResultNotification {
+  id              String           @id @default(cuid())
+  labRequestId    String
+  patientId       String
+  patientName     String
+  mrn             String
+  completedById   String
+  completedByName String
+  title           String
+  message         String           @db.Text
+  type            NotificationType @default(LAB_REQUEST)
+  isRead          Boolean          @default(false)
+  readAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-model Material {
-  id               String   @id @default(cuid())
-  sku              String   @unique
-  name             String
-  category         String
-  unitType         String
-  conversionRate   Int      @default(1)
-  totalInBaseUnits Int
-  baseUnit         String   @default("Piece")
-  zone             String
-  expiryDate       DateTime
-  status           String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  labRequest LabRequest @relation(fields: [labRequestId], references: [id], onDelete: Cascade)
+  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user       User       @relation("LabResultNotifications", fields: [completedById], references: [id])
 
-  withdrawals MaterialWithdrawal[]
-
-  @@map("materials")
-}
-
-model MaterialWithdrawal {
-  id          String           @id @default(cuid())
-  materialId  String
-  requestedBy String
-  department  String           @default("Laboratory")
-  quantity    Int
-  status      WithdrawalStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-
-  @@index([materialId])
-  @@map("material_withdrawals")
+  @@map("lab_result_notifications")
 }
 
 model Notification {
@@ -677,9 +731,5 @@ model Notification {
 
   user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([isRead])
-  @@index([relatedId])
-  @@index([createdAt])
   @@map("notifications")
 }

@@ -4,12 +4,26 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-type Role = 'ADMIN' | 'RECEPTION' | 'TRIAGE' | 'SPECIALIST' | 'LABORATORY' | 'RADIOLOGY' | 'BILLING' | 'FINANCIAL';
+// 1. Updated Role Type to include PHARMACIST and INVENTORY
+type Role = 
+  | 'ADMIN' 
+  | 'RECEPTION' 
+  | 'TRIAGE' 
+  | 'SPECIALIST' 
+  | 'LABORATORY' 
+  | 'RADIOLOGY' 
+  | 'BILLING' 
+  | 'FINANCIAL' 
+  | 'PHARMACIST' 
+  | 'INVENTORY';
 
+// 2. Updated roles list for the UI dropdown
 const roles: { value: Role; label: string }[] = [
   { value: 'RECEPTION', label: 'Reception' },
   { value: 'TRIAGE', label: 'Triage Nurse' },
   { value: 'SPECIALIST', label: 'Specialist Doctor' },
+  { value: 'PHARMACIST', label: 'Pharmacist' },
+  { value: 'INVENTORY', label: 'Inventory / Store Manager' },
   { value: 'LABORATORY', label: 'Laboratory Technician' },
   { value: 'RADIOLOGY', label: 'Radiology Technician' },
   { value: 'BILLING', label: 'Billing Officer' },
@@ -61,7 +75,6 @@ export default function RegisterPage() {
       ...(name === 'role' && value !== 'SPECIALIST' ? { specialty: '' } : {}),
     }));
 
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -117,7 +130,6 @@ export default function RegisterPage() {
 
       setShowSuccess(true);
 
-      // Auto redirect after success
       setTimeout(() => {
         router.push('/login');
       }, 1500);

@@ -15,13 +15,13 @@ import {
   Activity 
 } from 'lucide-react'
 
-// --- TypeScript Fix for 'role' error ---
+// --- TypeScript Fix for 'role' ---
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       email: string;
-      role: string;
+      role: 'ADMIN' | 'RECEPTION' | 'TRIAGE' | 'SPECIALIST' | 'LABORATORY' | 'RADIOLOGY' | 'BILLING' | 'FINANCIAL' | 'PHARMACIST' | 'INVENTORY';
     }
   }
 }
@@ -42,16 +42,24 @@ export default function LoginPage() {
   const isBlocked = blockedUntil !== null && now < blockedUntil
   const remainingMinutes = isBlocked ? Math.max(1, Math.ceil((blockedUntil! - now) / 60000)) : 0
 
+  // --- UPDATED REDIRECT MAP: Includes all roles ---
   const roleRedirectMap: Record<string, string> = {
     ADMIN: '/admin',
-    RECEPTION: '/reception-triage',
+    RECEPTION: '/reception',
+    TRIAGE: '/triage',
     SPECIALIST: '/specialist',
     LABORATORY: '/laboratory',
+    RADIOLOGY: '/radiology',
+    PHARMACIST: '/pharmacy',
+    INVENTORY: '/inventory',
+    BILLING: '/billing',
+    FINANCIAL: '/finance',
   }
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.role) {
       const role = session.user.role
+      // Fallback to /dashboard if role not specifically mapped
       const redirectPath = roleRedirectMap[role] || '/dashboard'
       router.replace(redirectPath)
     }
@@ -114,14 +122,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
-      {/* Background Soft Accents */}
       <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-blue-100/40 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-indigo-100/40 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-[420px] relative">
         <div className="bg-white border border-slate-200 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden">
           
-          {/* Top Banner / Branding */}
           <div className="pt-10 pb-6 text-center border-b border-slate-50">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 mb-4 ring-4 ring-blue-50/50">
               <Activity size={32} />
@@ -131,7 +137,6 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-5">
-            {/* Email Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1" htmlFor="email">
                 Staff Email
@@ -148,12 +153,11 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isBlocked || loading}
                   className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl py-3.5 pl-11 pr-4 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
-                  placeholder="doctor@hospital.com"
+                  placeholder="staff@hospital.com"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center px-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest" htmlFor="password">
@@ -187,7 +191,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 animate-in fade-in zoom-in duration-200">
                 <AlertCircle size={16} className="shrink-0" />
@@ -195,7 +198,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || isBlocked}
@@ -218,7 +220,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Bottom Security Footer */}
           <div className="bg-slate-50 px-8 py-5 border-t border-slate-100 flex items-center justify-between">
             <div className="flex gap-1.5">
               {[1, 2, 3].map((step) => (
