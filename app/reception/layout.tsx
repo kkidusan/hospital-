@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Sidebar from './../components/reception/Sidebar';
@@ -15,21 +15,20 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'loading') return;
-
-    if (status === 'unauthenticated') {
-      router.replace('/login');
-      return;
-    }
-
-    if (status === 'authenticated' && session?.user) {
-      if (session.user.role !== 'RECEPTION') {
-        router.replace('/dashboard');
-        return;
+    const handleInitialView = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false); // Hidden by default on mobile
+      } else {
+        setIsSidebarOpen(true); // Open by default on desktop
       }
       setIsLoading(false);
-    }
-  }, [status, session, router]);
+    };
+
+    handleInitialView();
+    // Optional: Update state if window is resized manually
+    window.addEventListener('resize', handleInitialView);
+    return () => window.removeEventListener('resize', handleInitialView);
+  }, []);
 
   if (status === 'loading' || isLoading) {
     return (
@@ -40,7 +39,6 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
             <ShieldCheck className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-blue-400" />
           </div>
           <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Verifying Terminal...</h2>
-          <p className="text-sm text-slate-500">Please wait</p>
         </div>
       </div>
     );
@@ -48,23 +46,27 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
+      {/* Sidebar - Position fixed on mobile via its own internal logic */}
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        <Header />
+      {/* Overlay Backdrop - Only visible on mobile when sidebar is open */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-        <main className="flex-1 overflow-y-auto p-6 bg-[radial-gradient(#e2e8f0_0.8px,transparent_0.8px)] [background-size:24px_24px]">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 w-full">
+        <Header isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[radial-gradient(#e2e8f0_0.8px,transparent_0.8px)] [background-size:24px_24px]">
           <div className="max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </div>
         </main>
       </div>
-
-      <style jsx global>{`
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }

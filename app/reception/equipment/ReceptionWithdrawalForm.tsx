@@ -48,17 +48,20 @@ export default function ReceptionWithdrawalForm({ materials = [], onClose, onSuc
       const res = await fetch("/api/inventory/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          requestedBy: session?.user?.name || "Unknown Staff",
+        }),
       });
 
       if (res.ok) {
         onSuccess();
       } else {
-        const result = await res.json();
-        setError(result.error || "Disbursement request failed.");
+        const result = await res.json().catch(() => ({}));
+        setError(result.error || "Failed to submit request.");
       }
     } catch (err) {
-      setError("Network error. Could not connect to Vault.");
+      setError("Network error. Could not connect to server.");
     } finally {
       setIsSubmitting(false);
     }
@@ -66,7 +69,6 @@ export default function ReceptionWithdrawalForm({ materials = [], onClose, onSuc
 
   return (
     <div className="flex flex-col h-full bg-white font-sans text-slate-900">
-      {/* Header with Teal Branding */}
       <div className="bg-slate-900 px-10 py-12 text-white flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
@@ -83,8 +85,8 @@ export default function ReceptionWithdrawalForm({ materials = [], onClose, onSuc
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-10 space-y-8 overflow-y-auto">
         {error && (
-          <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-600 text-[11px] font-black uppercase flex items-center gap-2">
-            <AlertCircle size={16} /> {error}
+          <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-600 text-sm flex items-center gap-2">
+            <AlertCircle size={18} /> {error}
           </div>
         )}
 
@@ -104,11 +106,13 @@ export default function ReceptionWithdrawalForm({ materials = [], onClose, onSuc
               required
               className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-teal-500/10 appearance-none"
               value={formData.materialId}
-              onChange={(e) => setFormData({...formData, materialId: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
             >
               <option value="">-- Select Supply --</option>
               {materials.map(m => (
-                <option key={m.id} value={m.id}>{m.name} (Available: {m.totalInBaseUnits})</option>
+                <option key={m.id} value={m.id}>
+                  {m.name} (Available: {m.totalInBaseUnits})
+                </option>
               ))}
             </select>
             <ArrowDownCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
@@ -124,24 +128,28 @@ export default function ReceptionWithdrawalForm({ materials = [], onClose, onSuc
               isInvalidQty ? "bg-rose-50 border-rose-300 text-rose-600" : "bg-white border-slate-200 text-teal-600 focus:border-teal-600"
             }`}
             value={formData.quantity}
-            onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 0})}
+            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
           />
-          {isInvalidQty && <p className="text-[10px] font-black text-rose-500 uppercase italic text-center">Stock limit reached</p>}
+          {isInvalidQty && (
+            <p className="text-[10px] font-black text-rose-500 uppercase italic text-center">
+              Exceeds available stock
+            </p>
+          )}
         </div>
 
         <div className="mt-auto pt-10 space-y-4">
           <div className="flex items-center gap-3 p-4 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
             <ShieldCheck size={20} />
-            <span className="text-[9px] font-black uppercase tracking-widest text-center">Authorized Request. Session Logged.</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">Authorized • Session Logged</span>
           </div>
 
           <button 
             type="submit"
             disabled={isSubmitting || isInvalidQty || isFormIncomplete}
-            className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:bg-teal-600 transition-all active:scale-[0.98] disabled:opacity-20 flex items-center justify-center gap-3"
+            className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:bg-teal-600 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
           >
             {isSubmitting ? (
-              <><Loader2 className="animate-spin" size={18} /><span>Processing...</span></>
+              <><Loader2 className="animate-spin" size={18} /><span>Processing Request...</span></>
             ) : (
               <><CheckCircle2 size={18} /><span>Submit Request</span></>
             )}

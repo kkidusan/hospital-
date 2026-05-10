@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useConsultationStore } from '../../../lib/store/useConsultationStore'; 
 import { 
   X, Loader2, CheckCircle2, Plus, Search, Clock, User, 
-  ChevronDown, ChevronRight, FileEdit, History, Save, MoreHorizontal, Trash2 
+  ChevronDown, ChevronRight, FileEdit, History, Save, MoreHorizontal, Trash2, Hash 
 } from 'lucide-react';
 
 const pageContainer: React.CSSProperties = { maxWidth: '1200px', margin: '0 auto', padding: '30px 20px', backgroundColor: '#f8fafc', minHeight: '100vh', position: 'relative' };
@@ -28,29 +28,16 @@ const recentSection: React.CSSProperties = { display: 'flex', flexDirection: 'co
 const sectionLabel: React.CSSProperties = { fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' };
 const cardHeader: React.CSSProperties = { padding: '24px 25px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
 const cardFooter: React.CSSProperties = { padding: '20px 25px', borderTop: '1px solid #e2e8f0', textAlign: 'right', backgroundColor: '#fcfdfe' };
-
-const menuItemStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  fontSize: '0.75rem',
-  textAlign: 'left',
-  border: 'none',
-  background: 'none',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  borderRadius: '6px',
-  transition: 'background 0.2s'
-};
+const menuItemStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: '0.75rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '6px', transition: 'background 0.2s' };
 
 interface ConsultationLayoutProps {
   children: React.ReactNode;
   patient: any;
   patientId: string;
+  visitId: string;
 }
 
-export default function ConsultationLayout({ children, patient, patientId }: ConsultationLayoutProps) {
+export default function ConsultationLayout({ children, patient, patientId, visitId }: ConsultationLayoutProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -169,6 +156,21 @@ export default function ConsultationLayout({ children, patient, patientId }: Con
           <span style={infoTextStyle}><strong>Name:</strong> {patient.fullName}</span>
           <span style={detailSeparator}>•</span>
           <span style={infoTextStyle}><strong>Card No:</strong> {patient.mrn || '—'}</span>
+          <span style={detailSeparator}>•</span>
+          <span style={{ 
+            ...infoTextStyle, 
+            backgroundColor: visitId === 'No Active Visit' ? '#fee2e2' : '#e0f2fe', 
+            padding: '2px 10px', 
+            borderRadius: '8px', 
+            color: visitId === 'No Active Visit' ? '#991b1b' : '#0369a1', 
+            fontSize: '0.95rem', 
+            fontWeight: 600, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px' 
+          }}>
+            <strong>Visit ID:</strong> {visitId}
+          </span>
         </div>
         <div style={actionButtonsWrapper}>
           <button onClick={() => setIsOpen(true)} style={notesBtnStyle}><FileEdit size={18} /> Open Notes</button>
@@ -230,11 +232,9 @@ export default function ConsultationLayout({ children, patient, patientId }: Con
                                   </div>
                                   <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.notes}</p>
                                 </div>
-
                                 <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === item.id ? null : item.id); }} style={{ position: 'absolute', top: '10px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
                                   <MoreHorizontal size={16} />
                                 </button>
-
                                 {activeMenuId === item.id && (
                                   <div ref={menuRef} className="menu-card" style={{ position: 'absolute', top: '30px', right: '0', backgroundColor: '#ffffff', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', borderRadius: '8px', zIndex: 9999, border: '1px solid #e2e8f0', minWidth: '140px', padding: '5px' }}>
                                     <button onClick={() => handleSelectNote(item)} style={menuItemStyle} className="menu-item">

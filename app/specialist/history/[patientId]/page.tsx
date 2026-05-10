@@ -1,91 +1,115 @@
-// app/specialist/history/[patientId]/page.tsx
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { Calendar } from 'lucide-react';
+import { ChevronLeft, Fingerprint, CalendarDays } from 'lucide-react';
 import HistoryClient from './HistoryClient';
+import Link from 'next/link';
 
-export default async function PatientHistoryPage({ params }: { params: Promise<{ patientId: string }> }) {
+export default async function PatientHistoryPage({ 
+  params 
+}: { 
+  params: Promise<{ patientId: string }> 
+}) {
   const { patientId } = await params;
-
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect('/login');
-  }
+  
+  if (!session?.user?.id) redirect('/login');
 
   const patient = await prisma.patient.findUnique({
     where: { id: patientId },
-    select: {
-      id: true,
-      fullName: true,
-      gender: true,
-      age: true,
-      mrn: true,
+    select: { 
+      id: true, 
+      fullName: true, 
+      gender: true, 
+      age: true, 
+      mrn: true 
     }
   });
 
-  if (!patient) {
-    redirect('/specialist');
-  }
+  if (!patient) redirect('/specialist');
 
-  const patientHistory = await prisma.patientHistory.findFirst({
-    where: { patientId },
-    select: { historyEntries: true }
+  // Fetch the specific PatientHistory record for this patient
+  const historyRecord = await prisma.patientHistory.findFirst({
+    where: { patientId: patientId },
   });
 
-  const historyEntries = patientHistory?.historyEntries 
-    ? (Array.isArray(patientHistory.historyEntries) ? patientHistory.historyEntries : [])
+  // Safely extract the array from the JSON field
+  const rawEntries = Array.isArray(historyRecord?.historyEntries) 
+    ? (historyRecord.historyEntries as any[]) 
     : [];
 
-  const sortedHistory = [...historyEntries].sort((a: any, b: any) => 
-    new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
-  );
+  // Sort entries by date (newest first)
+  const sortedHistory = [...rawEntries].sort((a: any, b: any) => {
+    const dateA = new Date(a.sessionDate || a.date || 0).getTime();
+    const dateB = new Date(b.sessionDate || b.date || 0).getTime();
+    return dateB - dateA;
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-6">
-        
-        {/* Patient Information - Single Flex Row */}
-        <div className="flex flex-wrap items-center gap-x-10 gap-y-3 mb-10 text-base">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-600">Full Name:</span>
-            <span className="font-semibold text-gray-900">{patient.fullName}</span>
+    <div className="min-h-screen bg-[#F1F5F9] pb-20">
+      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center">
+          <div className="flex-1">
+            <Link 
+              href="/specialist" 
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white transition-all group"
+            >
+              <ChevronLeft size={22} className="group-hover:-translate-x-0.5 transition-transform" />
+            </Link>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-600">Gender:</span>
-            <span className="font-medium text-gray-900">{patient.gender || '—'}</span>
+
+          <div className="flex-[2] flex flex-col items-center">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">{patient.fullName}</h1>
+              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded text-[10px] font-bold uppercase">
+                {patient.gender}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 mt-1 text-slate-500 text-xs font-medium">
+              <span className="flex items-center gap-1.5">
+                <Fingerprint size={14}/> {patient.mrn || 'NO-MRN'}
+              </span>
+              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+              <span>{patient.age} Years Old</span>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-600">Age:</span>
-            <span className="font-medium text-gray-900">{patient.age ? `${patient.age} years` : '—'}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-600">MRN:</span>
-            <span className="font-medium text-gray-900">{patient.mrn || '—'}</span>
+
+          <div className="flex-1 text-right">
+            <div className="inline-block px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-400">
+              CLINICAL HISTORY ARCHIVE
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Consultation History Section */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-5">
-            <Calendar size={24} className="text-gray-700" />
-            <h2 className="text-xl font-semibold text-gray-900">Consultation History</h2>
+      <main className="max-w-6xl mx-auto px-6 mt-10">
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900">Clinical Timeline</h2>
+            <p className="text-slate-500 mt-1 font-medium">
+              Complete record of consultations, labs, and radiology
+            </p>
+          </div>
+          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm font-bold text-slate-700">
+            {sortedHistory.length} Encounters
           </div>
         </div>
 
         {sortedHistory.length === 0 ? (
-          <div className="bg-white rounded-3xl p-20 text-center border border-gray-100">
-            <Calendar size={60} className="mx-auto text-gray-300 mb-6" />
-            <p className="text-xl text-gray-500">No consultation history available yet</p>
-            <p className="text-gray-400 mt-2">History will appear here after completing consultations</p>
+          <div className="bg-white rounded-[32px] p-24 text-center border border-slate-200 shadow-sm">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+               <CalendarDays size={40} className="text-slate-200" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900">No history yet</h3>
+            <p className="text-slate-500 mt-2">Completed consultations for this patient will appear here.</p>
           </div>
         ) : (
-          <HistoryClient sortedHistory={sortedHistory} />
+          <HistoryClient 
+            sortedHistory={sortedHistory} 
+            patientName={patient.fullName} 
+          />
         )}
-      </div>
+      </main>
     </div>
   );
 }

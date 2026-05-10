@@ -3,77 +3,87 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { 
+  LayoutDashboard, 
+  Users, 
+  Calendar, 
+  FolderOpen, 
+  Footprints, 
+  FileText, 
+  Wrench, 
+  Settings, 
+  BarChart3,
+  ChevronRight,
+  LucideIcon // Added this import for typing
+} from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-// Fetch queue count (existing)
+// 1. Define the Interface to resolve TS2339
+interface MenuItem {
+  name: string;
+  icon: LucideIcon;
+  href: string;
+  hasCount?: boolean;    // Optional
+  hasLabCount?: boolean; // Optional
+}
+
+interface MenuGroups {
+  group: string;
+  items: MenuItem[];
+}
+
+// ... (fetch functions remain the same)
 async function fetchQueueCount(): Promise<number> {
   try {
-    const res = await fetch('/api/specialist/queue-count', {
-      method: 'GET',
-      cache: 'no-store',
-    });
+    const res = await fetch('/api/specialist/queue-count', { method: 'GET', cache: 'no-store' });
     if (!res.ok) return 0;
     const data = await res.json();
     return data.count || 0;
-  } catch (error) {
-    console.error('Failed to fetch queue count:', error);
-    return 0;
-  }
+  } catch (error) { return 0; }
 }
 
-// NEW: Fetch unread lab result notifications count
 async function fetchUnreadLabNotificationsCount(): Promise<number> {
   try {
-    const res = await fetch('/api/notifications/lab-unread-count', {
-      method: 'GET',
-      cache: 'no-store',
-    });
+    const res = await fetch('/api/notifications/lab-unread-count', { method: 'GET', cache: 'no-store' });
     if (!res.ok) return 0;
     const data = await res.json();
     return data.count || 0;
-  } catch (error) {
-    console.error('Failed to fetch unread lab notifications:', error);
-    return 0;
-  }
+  } catch (error) { return 0; }
 }
 
-const SPECIALIST_MENU = [
+// 2. Apply the interface to the menu constant
+const SPECIALIST_MENU: MenuGroups[] = [
   {
     group: "Clinical",
     items: [
-      { name: "Dashboard", icon: "🏠", href: "/specialist" },
-      { name: "Queue", icon: "👥", href: "/specialist/queue", hasCount: true },
-      { name: "Appointments", icon: "⏰", href: "/specialist/appointments" },
+      { name: "Dashboard", icon: LayoutDashboard, href: "/specialist" },
+      { name: "Queue", icon: Users, href: "/specialist/queue", hasCount: true },
+      { name: "Appointments", icon: Calendar, href: "/specialist/appointments" },
     ]
   },
   {
     group: "Consultation",
     items: [
-      { 
-        name: "Records", 
-        icon: "📁", 
-        href: "/specialist/records", 
-        hasLabCount: true   // NEW: For lab notifications
-      },
+      { name: "Records", icon: FolderOpen, href: "/specialist/records", hasLabCount: true },
     ]
   },
   {
     group: "In-Patient",
     items: [
-      { name: "Rounds", icon: "🚶", href: "/specialist/rounds" },
-      { name: "Discharge", icon: "📄", href: "/specialist/discharge" },
+      { name: "Rounds", icon: Footprints, href: "/specialist/rounds" },
+      { name: "Discharge", icon: FileText, href: "/specialist/discharge" },
     ]
   },
   {
     group: "Personal",
     items: [
-      { name: "Equipment", icon: "⚙️", href: "/specialist/equipment" },
-      { name: "Settings", icon: "⚙️", href: "/specialist/settings" },
-      { name: "Reports", icon: "📊", href: "/specialist/reports" },
+      { name: "Equipment", icon: Wrench, href: "/specialist/equipment" },
+      { name: "Settings", icon: Settings, href: "/specialist/settings" },
+      { name: "Reports", icon: BarChart3, href: "/specialist/reports" },
     ]
   }
 ]
@@ -82,41 +92,23 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname()
   const [time, setTime] = useState("")
   const [queueCount, setQueueCount] = useState<number>(0)
-  const [unreadLabCount, setUnreadLabCount] = useState<number>(0)   // NEW
+  const [unreadLabCount, setUnreadLabCount] = useState<number>(0)
 
-  // Live time update
   useEffect(() => {
-    const updateTime = () => {
-      setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-    }
+    const updateTime = () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
     updateTime()
     const timer = setInterval(updateTime, 60000)
     return () => clearInterval(timer)
   }, [])
 
-  // Queue count with auto-refresh
   useEffect(() => {
-    const loadQueueCount = async () => {
-      const count = await fetchQueueCount()
-      setQueueCount(count)
+    const loadData = async () => {
+      const [q, l] = await Promise.all([fetchQueueCount(), fetchUnreadLabNotificationsCount()])
+      setQueueCount(q)
+      setUnreadLabCount(l)
     }
-
-    loadQueueCount()
-    const interval = setInterval(loadQueueCount, 25000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // NEW: Unread Lab Notifications count with auto-refresh
-  useEffect(() => {
-    const loadLabNotifications = async () => {
-      const count = await fetchUnreadLabNotificationsCount()
-      setUnreadLabCount(count)
-    }
-
-    loadLabNotifications()
-    const interval = setInterval(loadLabNotifications, 30000) // Refresh every 30 seconds
-
+    loadData()
+    const interval = setInterval(loadData, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -135,18 +127,9 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
       flexShrink: 0,
     }}>
       
-      {/* Scrollbar Style */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .sidebar-nav {
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
         .sidebar-nav::-webkit-scrollbar { width: 3px; }
-        .sidebar-nav:hover::-webkit-scrollbar { display: block; }
-        .sidebar-nav::-webkit-scrollbar-thumb {
-          background-color: #cbd5e1;
-          border-radius: 10px;
-        }
+        .sidebar-nav::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
       `}} />
 
       {/* Header */}
@@ -158,46 +141,28 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
         justifyContent: isOpen ? 'flex-start' : 'center',
         borderBottom: '1px solid #e2e8f0'
       }}>
-        {isOpen && (
-          <span style={{ 
-            fontSize: '0.68rem', 
-            fontWeight: 800, 
-            color: '#0284c8', 
-            letterSpacing: '1px',
-            textTransform: 'uppercase'
-          }}>
+        {isOpen ? (
+          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0284c8', letterSpacing: '1px', textTransform: 'uppercase' }}>
             SPECIALIST PORTAL
           </span>
+        ) : (
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0284c8' }} />
         )}
       </div>
 
       {/* Navigation */}
-      <nav 
-        className="sidebar-nav"
-        style={{ 
-          flex: 1, 
-          padding: '16px 8px', 
-          overflowY: 'auto' 
-        }}
-      >
+      <nav className="sidebar-nav" style={{ flex: 1, padding: '16px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
         {SPECIALIST_MENU.map((group, idx) => (
           <div key={idx} style={{ marginBottom: '22px' }}>
             {isOpen && (
-              <p style={{ 
-                fontSize: '0.62rem', 
-                fontWeight: 700, 
-                color: '#94a3b8', 
-                textTransform: 'uppercase', 
-                marginBottom: '8px',
-                paddingLeft: '12px'
-              }}>
+              <p style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '12px' }}>
                 {group.group}
               </p>
             )}
 
             {group.items.map((item) => {
-              const isActive = pathname === item.href || 
-                              (item.href !== '/specialist' && pathname.startsWith(item.href));
+              const isActive = pathname === item.href || (item.href !== '/specialist' && pathname.startsWith(item.href));
+              const Icon = item.icon;
 
               return (
                 <Link 
@@ -207,63 +172,59 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: isOpen ? 'space-between' : 'center',
+                    justifyContent: isOpen ? 'flex-start' : 'center',
                     padding: '10px 12px',
                     borderRadius: '8px',
                     textDecoration: 'none',
                     backgroundColor: isActive ? '#e0f2fe' : 'transparent',
-                    color: isActive ? '#0f172a' : '#64748b',
+                    color: isActive ? '#0369a1' : '#64748b',
                     marginBottom: '3px',
                     transition: 'all 0.2s ease',
                     position: 'relative'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ 
-                      fontSize: '1.18rem', 
-                      marginRight: isOpen ? '12px' : '0',
-                      opacity: isActive ? 1 : 0.8
-                    }}>
-                      {item.icon}
+                  <Icon 
+                    size={20} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                    style={{ minWidth: '20px', marginRight: isOpen ? '12px' : '0' }} 
+                  />
+                  
+                  {isOpen && (
+                    <span style={{ fontSize: '0.875rem', fontWeight: isActive ? 700 : 500, whiteSpace: 'nowrap', flex: 1 }}>
+                      {item.name}
                     </span>
-                    
-                    {isOpen && (
-                      <span style={{ 
-                        fontSize: '0.875rem', 
-                        fontWeight: isActive ? 700 : 500,
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {item.name}
-                      </span>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Queue Count */}
-                  {item.hasCount && queueCount > 0 && isOpen && (
+                  {/* Now TypeScript knows these properties might exist */}
+                  {item.hasCount && queueCount > 0 && (
                     <span style={{
-                      fontSize: '0.68rem',
+                      position: isOpen ? 'static' : 'absolute',
+                      top: isOpen ? 'auto' : '6px',
+                      right: isOpen ? 'auto' : '6px',
+                      fontSize: '0.65rem',
                       fontWeight: 700,
+                      backgroundColor: '#fee2e2',
                       color: '#ef4444',
-                      marginLeft: '8px',
-                      padding: '1px 6px',
-                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      borderRadius: '10px',
                       lineHeight: 1,
                     }}>
                       {queueCount}
                     </span>
                   )}
 
-                  {/* NEW: Lab Result Notifications Count (for Records) */}
-                  {item.hasLabCount && unreadLabCount > 0 && isOpen && (
+                  {item.hasLabCount && unreadLabCount > 0 && (
                     <span style={{
-                      fontSize: '0.68rem',
+                      position: isOpen ? 'static' : 'absolute',
+                      top: isOpen ? 'auto' : '6px',
+                      right: isOpen ? 'auto' : '6px',
+                      fontSize: '0.65rem',
                       fontWeight: 700,
-                      color: '#f59e0b',           // Orange color for lab results
-                      marginLeft: '8px',
-                      padding: '1px 6px',
-                      borderRadius: '4px',
+                      backgroundColor: '#fef3c7',
+                      color: '#d97706',
+                      padding: '2px 6px',
+                      borderRadius: '10px',
                       lineHeight: 1,
-                      letterSpacing: '0.5px'
                     }}>
                       {unreadLabCount}
                     </span>
@@ -275,7 +236,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer - unchanged */}
+      {/* Footer */}
       <div style={{ 
         padding: '16px', 
         borderTop: '1px solid #e2e8f0', 
@@ -306,16 +267,13 @@ export default function DoctorSidebar({ isOpen, setIsOpen }: SidebarProps) {
             alignItems: 'center',
             justifyContent: 'center',
             color: '#334155',
-            fontSize: '15px',
           }}
           title={isOpen ? "Collapse" : "Expand"}
         >
-          <span style={{ 
+          <ChevronRight size={18} style={{ 
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.3s'
-          }}>
-            →
-          </span>
+          }} />
         </button>
       </div>
     </aside>

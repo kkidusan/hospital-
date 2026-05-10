@@ -3,96 +3,72 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react'; // Optional: for a nice loading spinner
+import { Loader2, ShieldAlert } from 'lucide-react';
 import Sidebar from '../components/triage/Sidebare';
 import Header from '../components/triage/Header';
 
-export default function TriageLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TriageLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
-  const [isOpen, setIsOpen] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
-  // 1. Handle Hydration
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
+    const handleInitialView = () => {
+      if (window.innerWidth < 1024) setIsSidebarOpen(false);
+      else setIsSidebarOpen(true);
+    };
+    handleInitialView();
+    window.addEventListener('resize', handleInitialView);
+    return () => window.removeEventListener('resize', handleInitialView);
   }, []);
 
-  // 2. Handle Role-Based Access Control (RBAC)
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/');
-    } else if (status === 'authenticated' && session?.user?.role !== 'TRIAGE') {
-      router.replace('/dashboard'); // Redirect unauthorized users
+    if (status === 'unauthenticated') router.replace('/');
+    else if (status === 'authenticated' && session?.user?.role !== 'TRIAGE') {
+      router.replace('/dashboard');
     }
   }, [status, session, router]);
 
-  // Prevent flicker during hydration or session check
-  if (!mounted || status === 'loading') {
+  if (!isMounted || status === 'loading') {
     return (
-      <div style={{ 
-        height: '100vh', 
-        width: '100vw', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        background: '#f1f5f9' 
-      }}>
-        <Loader2 className="animate-spin text-blue-600" size={40} />
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-[9999]">
+        <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-3xl shadow-xl border border-slate-100">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin text-red-600" />
+            <ShieldAlert className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-red-400" />
+          </div>
+          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Securing Triage Terminal...</h2>
+        </div>
       </div>
     );
   }
 
-  // Final check: if authenticated but wrong role, keep showing loader 
-  // until the router.replace kicks in (prevents UI leaking)
-  if (session?.user?.role !== 'TRIAGE') {
-    return <div style={{ minHeight: '100vh', background: '#f1f5f9' }} />;
-  }
-
   return (
-    <div style={{ 
-      display: 'flex', 
-      height: '100vh', 
-      width: '100vw', 
-      overflow: 'hidden' 
-    }}>
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        overflow: 'hidden' 
-      }}>
-        <Header />
-        
-        <main style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '24px', 
-          backgroundColor: '#f1f5f9' 
-        }}>
-          <div style={{ 
-            maxWidth: '1600px', 
-            margin: '0 auto',
-            animation: 'fadeIn 0.3s ease-in-out'
-          }}>
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
+      {/* Sidebar - Mobile/Desktop logic */}
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+
+      {/* Overlay Backdrop - Mobile Only */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300">
+        <Header isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[radial-gradient(#e2e8f0_0.8px,transparent_0.8px)] [background-size:24px_24px]">
+          <div className="max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </div>
         </main>
       </div>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

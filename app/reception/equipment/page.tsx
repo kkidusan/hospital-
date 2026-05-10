@@ -24,28 +24,35 @@ export default function ReceptionEquipmentDashboard() {
   const [loading, setLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = async () => {
+    setRefreshing(true);
     try {
       const [invRes, histRes] = await Promise.all([
         fetch("/api/inventory"),
         fetch("/api/inventory/withdraw/history")
       ]);
-      setMaterials(await invRes.json());
-      setWithdrawals(await histRes.json());
-    } catch (e) { 
-      console.error("Sync failed", e); 
-    } finally { 
-      setLoading(false); 
+
+      if (invRes.ok) setMaterials(await invRes.json());
+      if (histRes.ok) setWithdrawals(await histRes.json());
+    } catch (e) {
+      console.error("Failed to fetch data", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // Filter to show only requests made by the current Triage staff member
   const myRequests = useMemo(() => {
     if (!session?.user?.name) return [];
-    return withdrawals.filter(req => req.requestedBy === session.user?.name);
+    return withdrawals.filter(req => 
+      req.requestedBy?.toLowerCase() === session.user?.name?.toLowerCase()
+    );
   }, [withdrawals, session?.user?.name]);
 
   const handleStatusUpdate = async (id: string, nextStatus: string) => {
@@ -57,6 +64,8 @@ export default function ReceptionEquipmentDashboard() {
         body: JSON.stringify({ status: nextStatus }),
       });
       if (res.ok) await fetchData();
+    } catch (err) {
+      console.error(err);
     } finally {
       setProcessingId(null);
     }
@@ -64,84 +73,97 @@ export default function ReceptionEquipmentDashboard() {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const config: Record<string, { color: string; icon: any }> = {
-      PENDING: { color: "bg-amber-50 text-amber-600 border-amber-100", icon: Clock },
-      APPROVED: { color: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: CheckCircle2 },
-      WITHDRAW_REQUESTED: { color: "bg-teal-50 text-teal-600 border-teal-200 animate-pulse", icon: Hand },
-      WITHDRAWN: { color: "bg-slate-50 text-slate-600 border-slate-100", icon: PackageCheck },
-      REJECTED: { color: "bg-rose-50 text-rose-600 border-rose-100", icon: XCircle },
+      PENDING: { color: "bg-amber-50 text-amber-600", icon: Clock },
+      APPROVED: { color: "bg-emerald-50 text-emerald-600", icon: CheckCircle2 },
+      WITHDRAW_REQUESTED: { color: "bg-teal-50 text-teal-600 animate-pulse", icon: Hand },
+      WITHDRAWN: { color: "bg-slate-50 text-slate-600", icon: PackageCheck },
+      REJECTED: { color: "bg-rose-50 text-rose-600", icon: XCircle },
     };
+
     const style = config[status] || config.PENDING;
     const Icon = style.icon;
 
     return (
-      <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tighter ${style.color}`}>
-        <Icon size={12} /> {status.replace("_", " ")}
+      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-tight ${style.color}`}>
+        <Icon size={10} /> {status.replace("_", " ")}
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfd] flex flex-col font-sans text-slate-900">
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 px-10 py-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-black italic tracking-tighter uppercase">
-            Triage<span className="text-teal-600">Vault</span>
-          </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.4em]">Reception Supply Log</p>
+    <div className="min-h-screen bg-[#f8f9fa] font-sans text-slate-900">
+      
+      {/* HEADER - COMPLETELY NO BACKGROUND CARD */}
+      <header className="px-4 py-4 border-b border-slate-200">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-black tracking-tighter text-slate-900">
+              Triage<span className="text-teal-600">Vault</span>
+            </h1>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Supply Log</p>
+          </div>
+
+          <button 
+            onClick={() => setIsDrawerOpen(true)}
+            className="bg-slate-900 hover:bg-teal-600 active:scale-95 transition-all text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"
+          >
+            <Plus size={15} /> NEW REQ
+          </button>
         </div>
-        <button 
-          onClick={() => setIsDrawerOpen(true)}
-          className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-teal-600 transition-all active:scale-95 shadow-lg shadow-teal-100"
-        >
-          <Plus size={16} /> Request Supplies
-        </button>
       </header>
 
-      <main className="p-10 max-w-7xl mx-auto w-full">
-        {loading ? (
-          <div className="flex flex-col items-center py-40 gap-4">
-            <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Syncing personal records...</span>
+      <main className="px-4 pt-4">
+        {(loading || refreshing) && (
+          <div className="flex flex-col items-center py-16 gap-2">
+            <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
+            <p className="text-[10px] font-bold text-slate-400">LOADING...</p>
           </div>
-        ) : (
-          <div className="bg-white border border-slate-200 rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden">
+        )}
+
+        {!loading && (
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50/50 text-[10px] uppercase font-black text-slate-400 tracking-widest">
-                <tr>
-                  <th className="px-8 py-5">Date</th>
-                  <th className="px-8 py-5">Supply Item</th>
-                  <th className="px-8 py-5 text-right">Status & Action</th>
+              {/* Table Header - No Background */}
+              <thead>
+                <tr className="border-b border-slate-300">
+                  <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Item</th>
+                  <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Qty</th>
+                  <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-slate-100">
                 {myRequests.length > 0 ? (
                   myRequests.map((log) => (
-                    <tr key={log.id} className="group transition-colors hover:bg-slate-50/50">
-                      <td className="px-8 py-5 text-[11px] font-bold text-slate-400">
-                        {new Date(log.createdAt).toLocaleDateString()} <br />
-                        <span className="font-medium opacity-60">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                    <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-3 py-4 text-[10px] text-slate-500 font-medium leading-tight">
+                        {new Date(log.createdAt).toLocaleDateString('en-GB')}<br />
+                        <span className="text-[9px] text-slate-400">
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </td>
-                      <td className="px-8 py-5">
-                        <div className="text-sm font-bold text-slate-800">{log.material?.name}</div>
-                        <div className="text-[10px] font-black text-teal-600 uppercase italic">Quantity: {log.quantity}</div>
+                      <td className="px-3 py-4 font-medium text-slate-800 text-[13px]">
+                        {log.material?.name}
                       </td>
-                      <td className="px-8 py-5">
-                        <div className="flex justify-end items-center gap-4">
+                      <td className="px-3 py-4 text-right font-bold text-teal-600 text-base">
+                        {log.quantity}
+                      </td>
+                      <td className="px-3 py-4 text-right">
+                        <div className="flex flex-col items-end gap-2">
                           {processingId === log.id ? (
-                            <div className="flex items-center gap-2 px-4 py-2 text-teal-600 font-black text-[10px] uppercase">
-                              <Loader2 size={14} className="animate-spin" /> Updating
+                            <div className="text-teal-600 text-[9px] font-bold flex items-center gap-1">
+                              <Loader2 size={12} className="animate-spin" /> UPDATING
                             </div>
                           ) : (
-                            <div className="flex gap-2">
-                              {log.status === "APPROVED" && (
-                                <button 
-                                  onClick={() => handleStatusUpdate(log.id, "WITHDRAW_REQUESTED")}
-                                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-slate-900 transition-all"
-                                >
-                                  Withdraw <ArrowRight size={12} />
-                                </button>
-                              )}
-                            </div>
+                            log.status === "APPROVED" && (
+                              <button 
+                                onClick={() => handleStatusUpdate(log.id, "WITHDRAW_REQUESTED")}
+                                className="bg-teal-600 hover:bg-slate-900 text-white text-[9px] font-black uppercase px-4 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all"
+                              >
+                                WITHDRAW <ArrowRight size={12} />
+                              </button>
+                            )
                           )}
                           <StatusBadge status={log.status} />
                         </div>
@@ -150,11 +172,12 @@ export default function ReceptionEquipmentDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="px-8 py-20 text-center">
-                       <div className="flex flex-col items-center opacity-20">
-                          <Clock size={40} className="mb-2" />
-                          <p className="text-[10px] font-black uppercase tracking-widest">No Supply Requests Found</p>
-                       </div>
+                    <td colSpan={4} className="px-3 py-20 text-center">
+                      <div className="flex flex-col items-center opacity-40">
+                        <Clock size={36} className="mb-3" />
+                        <p className="text-sm font-medium">No requests yet</p>
+                        <p className="text-[10px] mt-1">Tap "NEW REQ" above</p>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -164,15 +187,22 @@ export default function ReceptionEquipmentDashboard() {
         )}
       </main>
 
+      {/* Drawer */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
-          <div className="relative w-full max-w-md h-full bg-white shadow-2xl animate-in slide-in-from-right duration-300">
-             <ReceptionWithdrawalForm 
-                materials={materials} 
-                onClose={() => setIsDrawerOpen(false)} 
-                onSuccess={() => { setIsDrawerOpen(false); fetchData(); }} 
-             />
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            onClick={() => setIsDrawerOpen(false)} 
+          />
+          <div className="relative w-full max-w-md h-full bg-white">
+            <ReceptionWithdrawalForm 
+              materials={materials} 
+              onClose={() => setIsDrawerOpen(false)} 
+              onSuccess={() => {
+                setIsDrawerOpen(false);
+                fetchData();
+              }} 
+            />
           </div>
         </div>
       )}

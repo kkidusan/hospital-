@@ -1,10 +1,8 @@
 "use client";
-
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { 
-  AlertCircle, TestTube, ClipboardCheck, 
-  CheckCircle2, FileText, Printer, Heart, Calendar, UserCheck 
+import {
+  AlertCircle, TestTube, ClipboardCheck,
+  FileText, Printer, Heart, UserCheck
 } from 'lucide-react';
 import { useConsultationStore } from '../../../lib/store/useConsultationStore';
 import { format } from 'date-fns';
@@ -18,19 +16,19 @@ interface ConsultationFormProps {
   onPaymentUpdate?: (formData: FormData) => Promise<void>;
 }
 
-function RadiologyRequestForm({ 
-  patient, 
-  onRadSubmit 
-}: { 
-  patient: any; 
-  onRadSubmit: (formData: FormData) => Promise<void>; 
+function RadiologyRequestForm({
+  patient,
+  onRadSubmit
+}: {
+  patient: any;
+  onRadSubmit: (formData: FormData) => Promise<void>;
 }) {
-  const { 
-    radiologyDraft, 
-    toggleUltrasound, 
-    setOtherUltrasound, 
+  const {
+    radiologyDraft,
+    toggleUltrasound,
+    setOtherUltrasound,
     setRadiologyDraft,
-    resetRadiologyDraft 
+    resetRadiologyDraft
   } = useConsultationStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -66,34 +64,34 @@ function RadiologyRequestForm({
           <div className="space-y-3 text-base">
             {['Abdominal', 'Pelvic', 'Abdominopelvic'].map((item) => (
               <label key={item} className="flex items-center gap-3 cursor-pointer hover:text-blue-600 transition-colors">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={radiologyDraft.ultrasound.includes(item)}
                   onChange={() => toggleUltrasound(item)}
-                  className="w-4 h-4 accent-blue-600" 
+                  className="w-4 h-4 accent-blue-600"
                 />
                 <span>{item}</span>
               </label>
             ))}
             <div className="pt-3">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={radiologyDraft.otherUltrasound}
                 onChange={(e) => setOtherUltrasound(e.target.value)}
-                placeholder="Other (Thyroid, Breast, Scrotal...)" 
-                className="w-full border-b border-gray-300 pb-2 text-base focus:outline-none focus:border-blue-600 transition-colors" 
+                placeholder="Other (Thyroid, Breast, Scrotal...)"
+                className="w-full border-b border-gray-300 pb-2 text-base focus:outline-none focus:border-blue-600 transition-colors"
               />
             </div>
           </div>
         </div>
         <div>
           <h3 className="text-lg font-semibold text-blue-700 mb-5">X-RAY</h3>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={radiologyDraft.xrayType}
             onChange={(e) => setRadiologyDraft({ xrayType: e.target.value })}
-            placeholder="e.g. Chest X-ray, Abdominal series, Knee X-ray..." 
-            className="w-full border-b border-gray-300 pb-3 text-base focus:outline-none focus:border-blue-600 transition-colors" 
+            placeholder="e.g. Chest X-ray, Abdominal series, Knee X-ray..."
+            className="w-full border-b border-gray-300 pb-3 text-base focus:outline-none focus:border-blue-600 transition-colors"
           />
         </div>
       </div>
@@ -101,7 +99,7 @@ function RadiologyRequestForm({
         <label className="block text-base font-medium text-gray-700 mb-3">
           Clinical Data / Provisional Diagnosis
         </label>
-        <textarea 
+        <textarea
           value={radiologyDraft.clinicalData}
           onChange={(e) => setRadiologyDraft({ clinicalData: e.target.value })}
           required
@@ -111,7 +109,7 @@ function RadiologyRequestForm({
         />
       </div>
       <div className="flex justify-center">
-        <button 
+        <button
           type="submit"
           className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-base px-10 py-3.5 rounded-2xl transition-all duration-200 shadow-sm"
         >
@@ -130,14 +128,14 @@ export default function ConsultationForm({
   onFinalize,
   onPaymentUpdate,
 }: ConsultationFormProps) {
-  
+
   const hasTriage = !!patient?.triage;
   const [tab, setTab] = useState<'triage' | 'lab-request' | 'radiology' | 'results' | 'finalize'>(
     hasTriage ? 'triage' : 'lab-request'
   );
 
-  const { 
-    labDraft, 
+  const {
+    labDraft,
     toggleLabTest,
     setLabDraft,
     resetAllDrafts,
@@ -150,7 +148,7 @@ export default function ConsultationForm({
     };
   }, [resetAllDrafts]);
 
-  const tabs = hasTriage 
+  const tabs = hasTriage
     ? ['triage', 'lab-request', 'radiology', 'results', 'finalize']
     : ['lab-request', 'radiology', 'results', 'finalize'];
 
@@ -171,8 +169,8 @@ export default function ConsultationForm({
               key={t}
               onClick={() => setTab(t as any)}
               className={`pb-4 text-sm font-medium transition-all relative ${
-                tab === t 
-                  ? 'text-blue-700' 
+                tab === t
+                  ? 'text-blue-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -227,67 +225,73 @@ export default function ConsultationForm({
         )}
 
         {tab === 'lab-request' && (
-          <form 
+          <form
             action={async (formData: FormData) => {
               await onLabSubmit(formData);
               resetLabDraft();
-            }} 
+            }}
             className="max-w-5xl mx-auto"
           >
             <input type="hidden" name="patientId" value={patient.id} />
             <div className="mb-10">
               <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">Laboratory Requisition</h2>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-9">
+              {/* HEMATOLOGY */}
               <div>
                 <h4 className="font-semibold text-blue-700 text-base mb-4">HEMATOLOGY</h4>
                 <div className="space-y-2.5 text-sm">
                   {['CBC', 'ESR', 'Blood group & RH', 'Peripheral morphology', 'Blood film'].map((test) => (
                     <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={labDraft.selectedTests.includes(test)}
                         onChange={() => toggleLabTest(test)}
-                        name="labTests" 
-                        value={test} 
-                        className="w-4 h-4 accent-blue-600" 
+                        name="labTests"
+                        value={test}
+                        className="w-4 h-4 accent-blue-600"
                       />
                       {test}
                     </label>
                   ))}
                 </div>
               </div>
+
               <div className="space-y-9">
+                {/* SEROLOGY */}
                 <div>
                   <h4 className="font-semibold text-blue-700 text-base mb-4">SEROLOGY</h4>
                   <div className="space-y-2.5 text-sm">
-                    {['HCG (PT)', 'WIDAL / O&H', 'HBsAg', 'HCV Ab', 'RF', 'ANA'].map((test) => (
+                    {['HCG (PT)', 'WIDAL / O&H', 'HBsAg', 'HCV Ab', 'RF', 'ANA', 'HIV', 'RPR / Syphilis'].map((test) => (
                       <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={labDraft.selectedTests.includes(test)}
                           onChange={() => toggleLabTest(test)}
-                          name="labTests" 
-                          value={test} 
-                          className="w-4 h-4 accent-blue-600" 
+                          name="labTests"
+                          value={test}
+                          className="w-4 h-4 accent-blue-600"
                         />
                         {test}
                       </label>
                     ))}
                   </div>
                 </div>
+
+                {/* CHEMISTRY */}
                 <div>
                   <h4 className="font-semibold text-blue-700 text-base mb-4">CHEMISTRY</h4>
                   <div className="space-y-2.5 text-sm">
                     {['RBS', 'FBS', 'ALT/SGOT', 'ALP', 'Creatinine', 'BUN/Urea', 'Cholesterol', 'Triglyceride', 'HDL', 'LDL'].map((test) => (
                       <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={labDraft.selectedTests.includes(test)}
                           onChange={() => toggleLabTest(test)}
-                          name="labTests" 
-                          value={test} 
-                          className="w-4 h-4 accent-blue-600" 
+                          name="labTests"
+                          value={test}
+                          className="w-4 h-4 accent-blue-600"
                         />
                         {test}
                       </label>
@@ -295,55 +299,61 @@ export default function ConsultationForm({
                   </div>
                 </div>
               </div>
+
               <div className="space-y-9">
+                {/* URINALYSIS */}
                 <div>
                   <h4 className="font-semibold text-blue-700 text-base mb-4">URINALYSIS</h4>
                   <div className="space-y-2.5 text-sm">
                     {['Urinalysis (Physical + Chemical + Micro)', 'Urine Pregnancy Test'].map((test) => (
                       <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={labDraft.selectedTests.includes(test)}
                           onChange={() => toggleLabTest(test)}
-                          name="labTests" 
-                          value={test} 
-                          className="w-4 h-4 accent-blue-600" 
+                          name="labTests"
+                          value={test}
+                          className="w-4 h-4 accent-blue-600"
                         />
                         {test}
                       </label>
                     ))}
                   </div>
                 </div>
+
+                {/* MICROBIOLOGY */}
                 <div>
                   <h4 className="font-semibold text-blue-700 text-base mb-4">MICROBIOLOGY</h4>
                   <div className="space-y-2.5 text-sm">
                     {['Stool Examination', 'AFB', 'KOH Preparation', 'Gram Stain'].map((test) => (
                       <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={labDraft.selectedTests.includes(test)}
                           onChange={() => toggleLabTest(test)}
-                          name="labTests" 
-                          value={test} 
-                          className="w-4 h-4 accent-blue-600" 
+                          name="labTests"
+                          value={test}
+                          className="w-4 h-4 accent-blue-600"
                         />
                         {test}
                       </label>
                     ))}
                   </div>
                 </div>
+
+                {/* HORMONAL */}
                 <div>
                   <h4 className="font-semibold text-blue-700 text-base mb-4">HORMONAL</h4>
                   <div className="space-y-2.5 text-sm">
                     {['TSH', 'Free T3', 'Free T4', 'Total T3', 'Total T4'].map((test) => (
                       <label key={test} className="flex items-center gap-3 cursor-pointer hover:text-blue-600">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={labDraft.selectedTests.includes(test)}
                           onChange={() => toggleLabTest(test)}
-                          name="labTests" 
-                          value={test} 
-                          className="w-4 h-4 accent-blue-600" 
+                          name="labTests"
+                          value={test}
+                          className="w-4 h-4 accent-blue-600"
                         />
                         {test}
                       </label>
@@ -352,10 +362,11 @@ export default function ConsultationForm({
                 </div>
               </div>
             </div>
+
             <div className="mt-14 space-y-8 max-w-2xl">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Clinical Indication / Diagnosis</label>
-                <textarea 
+                <textarea
                   name="clinicalIndication"
                   value={labDraft.clinicalIndication}
                   onChange={(e) => setLabDraft({ clinicalIndication: e.target.value })}
@@ -367,7 +378,7 @@ export default function ConsultationForm({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Special Instructions (Optional)</label>
-                <textarea 
+                <textarea
                   name="labNotes"
                   value={labDraft.labNotes}
                   onChange={(e) => setLabDraft({ labNotes: e.target.value })}
@@ -377,8 +388,9 @@ export default function ConsultationForm({
                 />
               </div>
             </div>
+
             <div className="mt-12 flex justify-center">
-              <button 
+              <button
                 type="submit"
                 className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-medium text-base px-10 py-3.5 rounded-2xl transition-all shadow-sm"
               >
@@ -507,9 +519,9 @@ export default function ConsultationForm({
         )}
 
         {tab === 'finalize' && (
-          <FinalizeConsultationForm 
-            patient={patient} 
-            onFinalize={onFinalize} 
+          <FinalizeConsultationForm
+            patient={patient}
+            onFinalize={onFinalize}
           />
         )}
       </div>

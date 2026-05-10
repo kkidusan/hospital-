@@ -1,4 +1,3 @@
-// app/reception-triage/billing/BillingClient.tsx
 "use client";
 
 import { useState, useRef } from 'react';
@@ -85,15 +84,20 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
     <>
       <Toaster position="top-right" />
 
-      {invoice.status === 'PAID' ? (
-        <button onClick={() => setShowReceipt(true)} style={receiptBtn}>
-          <CheckCircle2 size={16} style={{ marginRight: '6px' }} /> View Receipt
-        </button>
-      ) : (
-        <button onClick={() => setShowConfirm(true)} style={confirmBtn}>
-          Confirm Payment
-        </button>
-      )}
+      {/* PARENT CONTAINER FOR ALIGNMENT */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+        {invoice.status === 'PAID' ? (
+          <button onClick={() => setShowReceipt(true)} style={receiptBtn}>
+            <CheckCircle2 size={16} style={{ marginRight: '6px' }} /> 
+            <span>View</span><span className="desktop-text">&nbsp;Receipt</span>
+          </button>
+        ) : (
+          <button onClick={() => setShowConfirm(true)} style={confirmBtn}>
+            <span style={{ width: '16px', marginRight: '6px' }} /> {/* Spacer to match icon width */}
+            <span>Confirm</span><span className="desktop-text">&nbsp;Payment</span>
+          </button>
+        )}
+      </div>
 
       {/* CONFIRMATION MODAL */}
       {showConfirm && (
@@ -189,6 +193,15 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
           }
           .no-print { display: none !important; }
         }
+
+        @media (max-width: 640px) {
+          .desktop-text { display: none; }
+          /* Set a fixed mobile width for both buttons */
+          .action-btn-main {
+             width: 100px !important; 
+          }
+        }
+
         #printable-receipt {
           overflow-y: auto;
           scrollbar-width: none;
@@ -200,41 +213,62 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
 }
 
 // ====================== STYLES ======================
+
+// Shared Base Styles for Action Buttons to keep alignment identical
+const baseActionBtn = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '8px 16px',
+  borderRadius: '8px',
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+  width: '160px', // Fixed width for desktop consistency
+  transition: 'all 0.2s ease',
+  textAlign: 'center' as const
+};
+
+const confirmBtn = { 
+  ...baseActionBtn, 
+  background: '#0f172a', 
+  color: '#fff', 
+  border: 'none' 
+};
+
+const receiptBtn = { 
+  ...baseActionBtn, 
+  background: '#fff', 
+  color: '#16a34a', 
+  border: '1px solid #16a34a' 
+};
+
+// Modal & Layout Styles (Unchanged)
 const drawerOverlay = { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', justifyContent: 'flex-end' };
 const drawer = { width: '480px', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column' as const };
 const receiptPaper = { flex: 1, padding: '30px', fontFamily: '"Courier New", Courier, monospace', color: '#000' };
-
 const clinicHeader = { textAlign: 'center' as const, marginBottom: '10px' };
 const clinicName = { margin: 0, fontSize: '1.2rem', fontWeight: 900 };
 const clinicSub = { margin: 0, fontSize: '0.75rem', fontWeight: 700 };
 const clinicContact = { margin: 0, fontSize: '0.6rem', color: '#444' };
 const receiptTitle = { margin: '10px 0', fontSize: '0.85rem', fontWeight: 900, textDecoration: 'underline' };
-
 const dataSection = { margin: '15px 0' };
 const row = { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '2px' };
 const lbl = { fontWeight: 900 };
 const val = { fontWeight: 400 };
-
 const itemTable = { width: '100%', borderCollapse: 'collapse' as const, margin: '15px 0' };
 const thL = { textAlign: 'left' as const, fontSize: '0.7rem', borderBottom: '1px solid #000', paddingBottom: '5px' };
 const thR = { textAlign: 'right' as const, fontSize: '0.7rem', borderBottom: '1px solid #000', paddingBottom: '5px' };
 const tdL = { textAlign: 'left' as const, fontSize: '0.75rem', padding: '5px 0' };
 const tdR = { textAlign: 'right' as const, fontSize: '0.75rem', padding: '5px 0' };
-
 const summaryBox = { marginLeft: 'auto', width: '200px', marginTop: '10px' };
 const rowS = { display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' };
 const totalRow = { display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 900, marginTop: '8px', borderTop: '2px solid #000', paddingTop: '8px' };
-
 const doubleLine = { borderBottom: '3px double #000', margin: '8px 0' };
 const dashedLine = { borderBottom: '1px dashed #000', margin: '6px 0' };
-
 const toolsContainer = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '50px' };
 const toolBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#f4f4f5', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem' };
 const closeBtn = { ...toolBtn, background: '#fee2e2', color: '#dc2626' };
-
-const confirmBtn = { background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' };
-const receiptBtn = { display: 'flex', alignItems: 'center', background: '#fff', color: '#16a34a', border: '1px solid #16a34a', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' };
-
 const overlay = { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000 };
 const modal = { background: '#fff', padding: '24px', borderRadius: '16px', width: '300px', textAlign: 'center' as const };
 const modalTitle = { margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 800 };

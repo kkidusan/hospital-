@@ -10,10 +10,17 @@ import {
   ChevronDown,
   FileText, 
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Menu,
+  X
 } from 'lucide-react';
 
-export default function Header() {
+interface HeaderProps {
+  isSidebarOpen?: boolean;
+  setIsSidebarOpen?: (open: boolean) => void;
+}
+
+export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps) {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -21,7 +28,6 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const displayName = session?.user?.name || 'Staff Member';
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -41,7 +47,6 @@ export default function Header() {
       });
       await signOut({ callbackUrl: '/', redirect: true });
     } catch (error) {
-      console.error('Logout error:', error);
       await signOut({ callbackUrl: '/' });
     } finally {
       setIsLoggingOut(false);
@@ -49,58 +54,70 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 bg-[#f8fafc] border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-40">
+    <header className="h-16 bg-[#f8fafc] border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       
-      {/* Left Section: Hospital Name */}
-      <div className="flex flex-col justify-center">
-        <h1 className="text-sm md:text-[15px] font-extrabold text-slate-900 leading-tight">
-          ዶ/ር ብርኩ በለጠ የውስጥ ደዌ ስፔሻሊቲ ክሊኒክ
-        </h1>
-        <h2 className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-          DR Birku Belete Internal medicine specialty clinic
-        </h2>
+      {/* Left Section: Mobile Toggle & Minimal Branding */}
+      <div className="flex items-center gap-2">
+        {/* Mobile Menu Button - Stays on left in mobile */}
+        <button 
+          onClick={() => setIsSidebarOpen?.(!isSidebarOpen)}
+          className="lg:hidden p-1.5 text-slate-500 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+        >
+          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        <div className="flex flex-col justify-center">
+          {/* Minimized font size on mobile (text-[11px]), original on desktop (md:text-[15px]) */}
+          <h1 className="text-[11px] md:text-[15px] font-extrabold text-slate-900 leading-tight">
+            ዶ/ር ብርኩ በለጠ የውስጥ ደዌ ስፔሻሊቲ ክሊኒክ
+          </h1>
+          {/* Hidden on mobile to save space */}
+          <h2 className="hidden md:block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            DR Birku Belete Internal medicine specialty clinic
+          </h2>
+        </div>
       </div>
 
-      {/* Right Section: Icons & Dropdown */}
+      {/* Right Section: Only Profile on Mobile, Full Nav on Desktop */}
       <div className="flex items-center gap-1 md:gap-2">
         
-        <button title="Help Center" className="p-2 text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-lg transition-all">
-          <HelpCircle size={20} />
-        </button>
+        {/* Help & Notifications: Hidden on mobile (hidden md:flex) */}
+        <div className="hidden md:flex items-center gap-1">
+          <button title="Help Center" className="p-2 text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-lg transition-all">
+            <HelpCircle size={20} />
+          </button>
 
-        <button title="Notifications" className="p-2 text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-lg relative transition-all">
-          <Bell size={20} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f8fafc]"></span>
-        </button>
+          <button title="Notifications" className="p-2 text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-lg relative transition-all">
+            <Bell size={20} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f8fafc]"></span>
+          </button>
+          
+          <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+        </div>
 
-        <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-
-        {/* User Profile Dropdown */}
-        <div 
-          className="relative"
-          ref={dropdownRef}
-          onMouseEnter={() => setIsDropdownOpen(true)}
-          onMouseLeave={() => setIsDropdownOpen(false)}
-        >
+        {/* User Profile Dropdown: Always visible on right */}
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl hover:bg-white hover:shadow-sm transition-all group"
+            className="flex items-center gap-1 md:gap-2 pl-1 md:pl-2 pr-1 py-1 rounded-xl hover:bg-white hover:shadow-sm transition-all group"
           >
-            <div className="text-right hidden sm:block">
+            {/* Name hidden on mobile */}
+            <div className="text-right hidden md:block">
               <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
                 {displayName}
               </p>
             </div>
             
             <div className="relative">
-              <UserCircle size={32} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#f8fafc] rounded-full"></div>
+              {/* Icon slightly smaller on mobile to look better */}
+              <UserCircle size={28} className="md:size-[32px] text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 md:w-2.5 md:h-2.5 bg-green-500 border-2 border-[#f8fafc] rounded-full"></div>
             </div>
             
             <ChevronDown size={12} className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Dropdown Menu */}
+          {/* Dropdown Menu - Kept original styling */}
           {isDropdownOpen && (
             <div className="absolute right-0 mt-0 pt-2 w-60 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="bg-white rounded-xl shadow-xl border border-slate-200 py-1 overflow-hidden">

@@ -1,63 +1,72 @@
-// app/specialist/history/[patientId]/HistoryClient.tsx
 "use client";
 
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { useState } from 'react';
-import { User, Heart, AlertCircle, ClipboardCheck, FileText } from 'lucide-react';
+import { 
+  X, 
+  Activity, 
+  ArrowRight,
+  Hash
+} from 'lucide-react';
 
-interface HistoryClientProps {
-  sortedHistory: any[];
-}
-
-export default function HistoryClient({ sortedHistory }: HistoryClientProps) {
+export default function HistoryClient({ 
+  sortedHistory, 
+  patientName 
+}: { 
+  sortedHistory: any[]; 
+  patientName: string;
+}) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const selectedEntry = selectedIndex !== null ? sortedHistory[selectedIndex] : null;
 
-  const openDetail = (index: number) => {
-    setSelectedIndex(index);
+  const formatDate = (dateStr?: string, fmt: string = 'dd MMM yyyy') => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return isValid(date) ? format(date, fmt) : "N/A";
   };
 
-  const closeSidebar = () => {
-    setSelectedIndex(null);
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return isValid(date) ? format(date, 'dd MMM yyyy • hh:mm a') : "N/A";
   };
 
   return (
     <>
-      {/* Plain Consultation History Table */}
-      <div className="overflow-hidden border border-gray-200 rounded-lg">
-        <table className="w-full text-sm">
+      {/* MAIN TABLE LIST */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left py-3.5 px-6 font-medium text-gray-700">Date & Time</th>
-              <th className="text-left py-3.5 px-6 font-medium text-gray-700">Diagnosis</th>
-              <th className="text-left py-3.5 px-6 font-medium text-gray-700">Visit</th>
-              <th className="w-24 text-right pr-6"></th>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date / Visit ID</th>
+              <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diagnosis</th>
+              <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Doctor</th>
+              <th className="w-16"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedHistory.map((entry: any, index: number) => (
-              <tr 
+          <tbody className="divide-y divide-slate-100">
+            {sortedHistory.map((entry, index) => (
+              <tr
                 key={index}
-                className="hover:bg-blue-50 cursor-pointer transition-colors"
-                onClick={() => openDetail(index)}
+                className="group hover:bg-indigo-50/30 cursor-pointer transition-all"
+                onClick={() => setSelectedIndex(index)}
               >
                 <td className="py-4 px-6">
-                  <div className="font-medium text-gray-900">
-                    {format(new Date(entry.sessionDate), 'dd MMM yyyy')}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    {format(new Date(entry.sessionDate), 'hh:mm a')}
-                  </div>
-                </td>
-                <td className="py-4 px-6 text-gray-700 line-clamp-1">
-                  {entry.diagnosis || "Consultation completed"}
+                  <p className="font-bold text-slate-900 text-sm">{formatDate(entry.sessionDate || entry.date)}</p>
+                  <p className="text-[10px] text-indigo-500 font-mono font-bold uppercase">
+                    {entry.visitId || "N/A"}
+                  </p>
                 </td>
                 <td className="py-4 px-6">
-                  <span className="inline-block px-3 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                    Visit {sortedHistory.length - index}
-                  </span>
+                  <p className="font-semibold text-slate-800 text-sm line-clamp-1">
+                    {entry.diagnoses?.[0]?.name || entry.diagnosis || "Consultation"}
+                  </p>
+                </td>
+                <td className="py-4 px-6 text-sm text-slate-600">
+                  Dr. {entry.doctorName || entry.doctor || 'Specialist'}
                 </td>
                 <td className="py-4 px-6 text-right">
-                  <span className="text-blue-600 hover:text-blue-700 font-medium text-sm">View →</span>
+                  <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-600 transition-colors inline" />
                 </td>
               </tr>
             ))}
@@ -65,147 +74,125 @@ export default function HistoryClient({ sortedHistory }: HistoryClientProps) {
         </table>
       </div>
 
-      {/* Right Sidebar Overlay */}
-      {selectedIndex !== null && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
+      {/* DETAIL SIDEBAR */}
+      {selectedIndex !== null && selectedEntry && (
+        <div className="fixed inset-0 z-[60] flex justify-end">
           <div 
-            className="w-1/2 h-full bg-white shadow-2xl overflow-y-auto relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="font-semibold text-base text-gray-900">Consultation Details</h2>
-              <button
-                onClick={closeSidebar}
-                className="text-gray-500 hover:text-red-600 text-2xl leading-none px-3 py-1 rounded hover:bg-gray-100"
-              >
-                ✕
-              </button>
-            </div>
+            className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" 
+            onClick={() => setSelectedIndex(null)} 
+          />
 
-            <div className="p-5 space-y-4 text-sm">
-              {(() => {
-                const entry = sortedHistory[selectedIndex];
-                const index = selectedIndex;
+          <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+            <button 
+              onClick={() => setSelectedIndex(null)} 
+              className="absolute top-4 right-4 z-10 p-2 bg-white/80 hover:bg-red-50 rounded-full text-slate-400 hover:text-red-500 transition-all border border-slate-100"
+            >
+              <X size={20} />
+            </button>
 
-                return (
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center gap-3 pb-3 border-b">
-                      <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <User size={18} className="text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">
-                          {format(new Date(entry.sessionDate), 'dd MMMM yyyy')}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {format(new Date(entry.sessionDate), 'hh:mm a')} • Dr. {entry.doctorName || "Birku Belete"}
-                        </div>
-                      </div>
-                      <span className="px-3 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                        Visit {sortedHistory.length - index}
-                      </span>
-                    </div>
-
-                    {/* Final Diagnosis */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 pt-10 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="font-medium text-xs uppercase tracking-widest text-emerald-700 mb-1">Final Diagnosis</h3>
-                      <p className="text-gray-900">{entry.diagnosis || "No diagnosis recorded"}</p>
+                        <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-1">Patient Record</p>
+                        <h2 className="text-xl font-black text-slate-900 leading-tight">Visit Summary</h2>
                     </div>
+                    {/* VISIT ID BADGE */}
+                    <div className="bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-1.5 shadow-sm shadow-indigo-200">
+                        <Hash size={12} className="text-indigo-200"/>
+                        <span className="text-[11px] font-mono font-bold tracking-tight">
+                            {selectedEntry.visitId || "MANUAL"}
+                        </span>
+                    </div>
+                </div>
+                
+                <p className="text-slate-500 text-sm font-medium">{patientName}</p>
+                
+                <div className="mt-6 flex justify-between items-end">
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Practitioner</p>
+                    <p className="font-bold text-slate-800">Dr. {selectedEntry.doctorName || selectedEntry.doctor}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Timestamp</p>
+                    <p className="text-xs font-medium text-slate-600">{formatDateTime(selectedEntry.sessionDate || selectedEntry.date)}</p>
+                  </div>
+                </div>
+              </div>
 
-                    {/* Clinical Notes */}
-                    {entry.clinicalNotes && (
-                      <div>
-                        <h3 className="font-medium text-xs uppercase tracking-widest text-gray-800 mb-1">Clinical Notes & Advice</h3>
-                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-sm">
-                          {entry.clinicalNotes}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Vital Signs */}
-                    {entry.triage && (
-                      <div>
-                        <h3 className="font-medium text-xs uppercase tracking-widest text-red-600 mb-2 flex items-center gap-1.5">
-                          <Heart size={16} /> Vital Signs
-                        </h3>
-                        <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-sm">
-                          <div><span className="text-gray-500 text-xs block">Temperature</span> <span className="font-medium">{entry.triage.temperature}°C</span></div>
-                          <div><span className="text-gray-500 text-xs block">Blood Pressure</span> <span className="font-medium">{entry.triage.bloodPressure}</span></div>
-                          <div><span className="text-gray-500 text-xs block">Pulse</span> <span className="font-medium">{entry.triage.pulse} bpm</span></div>
-                          <div><span className="text-gray-500 text-xs block">SpO₂</span> <span className="font-medium">{entry.triage.spo2}%</span></div>
-                          <div><span className="text-gray-500 text-xs block">Weight</span> <span className="font-medium">{entry.triage.weight} kg</span></div>
+              <div className="p-6 space-y-8">
+                {/* DIAGNOSES */}
+                <section>
+                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-3 pb-1 border-b border-slate-200">Diagnoses</h3>
+                  <div className="space-y-2">
+                    {selectedEntry.diagnoses?.map((d: any, i: number) => (
+                      <div key={i} className="flex justify-between items-start text-sm">
+                        <div className="pr-4">
+                          <p className="font-bold text-slate-800">{d.name}</p>
+                          <p className="text-[10px] text-slate-400 uppercase font-medium">{d.category}</p>
                         </div>
+                        <span className="font-mono text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                          {d.icdCode}
+                        </span>
                       </div>
-                    )}
-
-                    {/* Chief Complaint */}
-                    {entry.chiefComplaint && (
-                      <div>
-                        <h3 className="font-medium text-xs uppercase tracking-widest text-amber-600 mb-1 flex items-center gap-1.5">
-                          <AlertCircle size={16} /> Chief Complaint
-                        </h3>
-                        <p className="text-gray-700 text-sm">{entry.chiefComplaint}</p>
-                      </div>
-                    )}
-
-                    {/* Lab Results */}
-                    {entry.labRequests?.length > 0 && (
-                      <div>
-                        <h3 className="font-medium text-xs uppercase tracking-widest text-blue-700 mb-2 flex items-center gap-1.5">
-                          <ClipboardCheck size={16} /> Laboratory Results
-                        </h3>
-                        <div className="space-y-4">
-                          {entry.labRequests.map((req: any, i: number) => (
-                            <div key={i} className="border border-gray-200 rounded p-3 text-xs">
-                              <div className="text-gray-500 mb-1.5">
-                                Requested on {format(new Date(req.createdAt), 'dd MMM yyyy')}
-                              </div>
-                              <table className="w-full">
-                                <thead>
-                                  <tr className="border-b">
-                                    <th className="text-left py-1">Test</th>
-                                    <th className="text-left py-1">Result</th>
-                                    <th className="text-left py-1">Unit</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y text-gray-900">
-                                  {req.tests?.map((test: any) => (
-                                    <tr key={test.id}>
-                                      <td className="py-1.5 font-medium">{test.testName}</td>
-                                      <td className="py-1.5">{test.result || '—'}</td>
-                                      <td className="py-1.5 text-gray-500">{test.unit || '—'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Radiology */}
-                    {entry.radiologyRequests?.length > 0 && (
-                      <div>
-                        <h3 className="font-medium text-xs uppercase tracking-widest text-violet-700 mb-2 flex items-center gap-1.5">
-                          <FileText size={16} /> Radiology Reports
-                        </h3>
-                        <div className="space-y-3">
-                          {entry.radiologyRequests.map((req: any, i: number) => (
-                            <div key={i} className="border border-gray-200 rounded p-3 text-sm">
-                              <div className="font-medium">{req.scanType || 'Radiology Request'}</div>
-                              {req.clinicalData && <div className="mt-2 text-gray-700"><span className="font-medium">Clinical Data:</span> {req.clinicalData}</div>}
-                              {req.ultrasound?.length > 0 && <div className="mt-1"><span className="font-medium">Ultrasound:</span> {req.ultrasound.join(', ')}</div>}
-                              {req.xrayType && <div className="mt-1"><span className="font-medium">X-Ray:</span> {req.xrayType}</div>}
-                            </div>
-                          ))}
-                        </div>
+                    )) || (
+                      <div className="flex justify-between items-start text-sm">
+                        <p className="font-bold text-slate-800">{selectedEntry.diagnosis || "No specific diagnosis recorded"}</p>
                       </div>
                     )}
                   </div>
-                );
-              })()}
+                </section>
+
+                {/* VITALS */}
+                {selectedEntry.vitals && (
+                  <section>
+                    <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-3 pb-1 border-b border-slate-200">Physical Vitals</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(selectedEntry.vitals).map(([key, value]: [string, any]) => 
+                        value && (
+                          <div key={key} className="flex flex-col p-2 bg-slate-50 rounded border border-slate-100">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            <span className="text-sm font-black text-slate-800">{value}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {/* LAB FINDINGS */}
+                <section>
+                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-3 pb-1 border-b border-slate-200">Lab Findings</h3>
+                  <div className="space-y-2">
+                    {selectedEntry.labResults?.flatMap((lab: any) => lab.tests || []).map((test: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-slate-50 last:border-0">
+                        <span className="font-medium text-slate-700">{test.name}</span>
+                        <span className={`font-mono font-black text-[11px] ${test.result === 'Pending' ? 'text-amber-500' : 'text-emerald-600'}`}>
+                          {test.result}
+                        </span>
+                      </div>
+                    )) || <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Clear</p>}
+                  </div>
+                </section>
+
+                {/* CLINICAL NOTES */}
+                {(selectedEntry.clinicalNotes || selectedEntry.notes) && (
+                  <section className="pb-6">
+                    <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-2">Clinical Advice</h3>
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                        <p className="text-sm text-slate-600 leading-relaxed italic">
+                         "{selectedEntry.clinicalNotes || selectedEntry.notes}"
+                       </p>
+                    </div>
+                  </section>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 bg-white border-t text-center">
+              <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">End of Record</p>
             </div>
           </div>
         </div>
