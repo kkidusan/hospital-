@@ -1,29 +1,27 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: allowance-db
     restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: bruhtech123
-      POSTGRES_DB: hms_db
+    env_file: 
+      - .env.production
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    image: allowance-system-app:latest
     container_name: hms-web-app
     restart: always
-    expose:
-      - "3000"
+    env_file:
+      - .env.production
     environment:
-      DATABASE_URL: "postgresql://postgres:bruhtech123@db:5432/hms_db"
-      BACKUP_ENCRYPTION_PASSWORD: "DrBirkuBeleteClinicBackup2026!SecureKeyX7z9vK2mPq"
-      NEXT_PUBLIC_API_URL: "http://192.168.137.1/api"
+      # 🛑 በቀጥታ እሴቱን እዚህ በመስጠት ፕሪስማ ሁልጊዜ እንዲያገኘው እናደርጋለን
+      DATABASE_URL: "postgresql://postgres:bruhtech123@db:5432/postgres?schema=public"
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: "http://localhost"
     depends_on:
       - db
 

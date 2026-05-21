@@ -4,7 +4,7 @@ import { prisma } from "./lib/db";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 
-// --- Custom Error Classes ---
+// --- Custom Security Error Classes ---
 class InvalidCredentialsError extends AuthError {
   constructor() {
     super("Invalid email or password");
@@ -21,12 +21,29 @@ class TooManyAttemptsError extends AuthError {
   }
 }
 
+class TwoFactorRequiredError extends AuthError {
+  constructor() {
+    super("2FA_REQUIRED");
+    this.name = "TwoFactorRequiredError";
+    this.code = "2fa_required";
+  }
+}
+
+class InvalidTwoFactorError extends AuthError {
+  constructor() {
+    super("Security Protocol: Invalid verification token code.");
+    this.name = "InvalidTwoFactorError";
+    this.code = "invalid_two_factor";
+  }
+}
+
 export default {
   providers: [
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        twoFactorCode: { label: "Two Factor Code", type: "text" },
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
@@ -41,6 +58,7 @@ export default {
         const clientIP = (forwardedFor || realIP || "unknown").split(',')[0].trim();
         const userAgent = req?.headers?.get("user-agent") || "unknown";
 
+        // Query user table
         const user = await prisma.user.findUnique({
           where: { email },
           select: {
@@ -58,7 +76,7 @@ export default {
 
         if (!user) throw new InvalidCredentialsError();
 
-        // Security: Brute Force Protection (Server-side)
+        // Security Check: Brute Force Protection (Server-side)
         const now = new Date();
         const blockDurationMs = 15 * 60 * 1000;
         if (
@@ -70,6 +88,7 @@ export default {
           throw new TooManyAttemptsError(Math.ceil(remainingMs / 60000));
         }
 
+        // STEP 1: Verify primary credentials first
         const isValid = await bcrypt.compare(credentials.password as string, user.password);
 
         if (!isValid) {
@@ -83,10 +102,49 @@ export default {
           throw new InvalidCredentialsError();
         }
 
-        // Generate a unique token for this specific login session
+        // STEP 2: Credentials are correct. Check if 2FA system rule is active.
+        const providedCode = credentials.twoFactorCode as string;
+
+        try {
+          const twoFactorSetting = await prisma.systemSetting.findUnique({
+            where: { key: "two_factor_auth" }
+          });
+
+          if (twoFactorSetting && twoFactorSetting.value === "On") {
+            // If the user hasn't provided a code yet, halt login and command client to show 2FA UI
+            if (!providedCode) {
+              throw new TwoFactorRequiredError();
+            }
+
+            // A code was provided, now validate it against the database system code
+            const codeSetting = await prisma.systemSetting.findUnique({
+              where: { key: "two_factor_code" }
+            });
+
+            if (providedCode.trim() !== codeSetting?.value) {
+              // Increment failed metrics on incorrect token submission
+              await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  failedLoginAttempts: { increment: 1 },
+                  lastFailedLogin: now,
+                },
+              });
+              throw new InvalidTwoFactorError();
+            }
+          }
+        } catch (error) {
+          // If it's a specific flow control security error, propagate it directly
+          if (error instanceof TwoFactorRequiredError || error instanceof InvalidTwoFactorError) {
+            throw error;
+          }
+          console.error("Configuration system check bypass error context:", error);
+        }
+
+        // STEP 3: Complete Authentication Success Matrix
         const currentSessionToken = crypto.randomUUID();
 
-        // Update User Metadata
+        // Update User Metadata Records
         await prisma.user.update({
           where: { id: user.id },
           data: {
@@ -99,7 +157,7 @@ export default {
           },
         });
 
-        // Audit Logging
+        // Write Successful Event to System Logs
         await prisma.auditLog.create({
           data: {
             userId: user.id,
@@ -110,7 +168,7 @@ export default {
           },
         });
 
-        // Return user object (this goes to the JWT callback)
+        // Return user object payload to NextAuth JWT callback mechanics
         return {
           id: user.id,
           email: user.email,
@@ -127,13 +185,11 @@ export default {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 24 * 60 * 60, // 24 Hours duration metrics
   },
   secret: process.env.AUTH_SECRET,
   callbacks: {
     async jwt({ token, user }) {
-      // If user exists, it means we just logged in. 
-      // We persist the ID and Role into the encrypted JWT cookie.
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -144,7 +200,6 @@ export default {
       return token;
     },
     async session({ session, token }) {
-      // Map data from the JWT token to the Session object
       if (token && session.user) {
         session.user.id = token.id;
         session.user.email = token.email as string;
@@ -153,14 +208,12 @@ export default {
         session.user.sessionToken = token.sessionToken;
       }
 
-      // SECURITY: Check if this session is still the "active" one in the DB
       if (token.id && token.sessionToken) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
           select: { currentSessionToken: true },
         });
 
-        // If the token in the cookie doesn't match the DB, the session is invalid
         if (!dbUser || dbUser.currentSessionToken !== token.sessionToken) {
           return null as any; 
         }

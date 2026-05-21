@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Printer, 
   X, 
@@ -11,10 +11,55 @@ import {
 import html2canvas from 'html2canvas';
 import toast, { Toaster } from 'react-hot-toast';
 
+interface SystemSettings {
+  company_name?: string;
+  company_name_secondary?: string;
+  primary_color?: string;
+  system_logo?: string;
+  physical_address?: string;
+  city?: string;
+  primary_phone?: string;
+  secondary_phone?: string;
+  official_email?: string;
+  website_url?: string;
+}
+
 export default function PaymentHistory({ data }: { data: any[] }) {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // --- Dynamic Core Settings Data Fetch ---
+  useEffect(() => {
+    const fetchClinicSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const resData = await response.json();
+          setSettings(resData);
+        }
+      } catch (err) {
+        console.error("Failed to load dynamic configurations for payment history:", err);
+      }
+    };
+    fetchClinicSettings();
+  }, []);
+
+  // Safe Fallback Aggregators for Dynamic Styling and Branding text
+  const dynamicSuccessColor = settings?.primary_color || '#10b981';
+  const clinicTitle = settings?.company_name || "DR. BIRKU BELETE";
+  const clinicSubtitle = settings?.company_name_secondary || "INTERNAL MEDICINE SPECIALTY CLINIC";
+
+  const computedLocation = settings?.physical_address && settings?.city
+    ? `${settings.physical_address}, ${settings.city}`
+    : "Woldia, Ethiopia";
+
+  const computedContactRow = [
+    settings?.primary_phone || "0915858840",
+    settings?.secondary_phone || "0925993830",
+    settings?.official_email
+  ].filter(Boolean).join(" / ");
 
   const handleOpenReceipt = (invoice: any) => {
     setSelectedInvoice(invoice);
@@ -123,7 +168,11 @@ export default function PaymentHistory({ data }: { data: any[] }) {
                   <div className="m-amount" style={amountStyle}>{inv.totalAmount.toLocaleString()} <small style={{fontWeight: 400, fontSize: '0.65em'}}>ETB</small></div>
                 </td>
                 <td style={{...td, textAlign: 'right'}}>
-                  <button className="m-btn" onClick={() => handleOpenReceipt(inv)} style={receiptBtn}>
+                  <button 
+                    className="m-btn" 
+                    onClick={() => handleOpenReceipt(inv)} 
+                    style={{...receiptBtn, color: dynamicSuccessColor, borderColor: dynamicSuccessColor}}
+                  >
                     <CheckCircle2 size={12} style={{ marginRight: '4px' }} /> Receipt
                   </button>
                 </td>
@@ -141,9 +190,23 @@ export default function PaymentHistory({ data }: { data: any[] }) {
             <div style={drawerContent}>
                 <div id="printable-receipt" ref={receiptRef} style={receiptPaper}>
                   <div style={clinicHeader}>
-                    <h2 style={clinicName}>DR. BIRKU BELETE</h2>
-                    <p style={clinicSub}>INTERNAL MEDICINE SPECIALTY CLINIC</p>
-                    <p style={clinicContact}>Woldia, Ethiopia | 0915858840 / 0925993830</p>
+                    {settings?.system_logo && (
+                      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                        <img 
+                          src={settings.system_logo} 
+                          alt="Clinic Logo" 
+                          style={{ height: '44px', objectFit: 'contain', mixBlendMode: 'multiply' }} 
+                        />
+                      </div>
+                    )}
+                    <h2 style={clinicName}>{clinicTitle}</h2>
+                    <p style={{...clinicSub, color: dynamicSuccessColor}}>{clinicSubtitle}</p>
+                    <p style={clinicContact}>{computedLocation} | {computedContactRow}</p>
+                    {settings?.website_url && (
+                      <p style={{ margin: 0, fontSize: '0.55rem', color: '#2563eb', fontFamily: 'monospace', textDecoration: 'underline', marginTop: '2px' }}>
+                        {settings.website_url}
+                      </p>
+                    )}
                     <div style={doubleLine} />
                     <h4 style={receiptTitle}>OFFICIAL CASH RECEIPT</h4>
                   </div>
@@ -177,16 +240,23 @@ export default function PaymentHistory({ data }: { data: any[] }) {
                   <div style={dashedLine} />
 
                   <div style={summaryBox}>
-                    <div style={rowS}><span>Sub-Total:</span><span>{(selectedInvoice.totalAmount - (selectedInvoice.taxAmount || 0)).toFixed(2)}</span></div>
-                    <div style={rowS}><span>VAT (15%):</span><span>{(selectedInvoice.taxAmount || 0).toFixed(2)}</span></div>
+                    <div style={rowS}><span>Sub-Total:</span><span>{selectedInvoice.totalAmount.toFixed(2)}</span></div>
                     <div style={totalRow}><span>TOTAL PAID:</span><span>{selectedInvoice.totalAmount.toFixed(2)} ETB</span></div>
                   </div>
 
                   <div className="no-print" style={toolsContainer}>
-                    <button onClick={() => window.print()} style={toolBtn}><Printer size={16} /> Print</button>
-                    <button onClick={handleShare} style={toolBtn}><Share2 size={16} /> Share</button>
-                    <button onClick={handleDownload} style={toolBtn}><Download size={16} /> Save</button>
-                    <button onClick={() => setShowDrawer(false)} style={closeBtn}><X size={16} /> Close</button>
+                    <button onClick={() => window.print()} style={toolBtn}>
+                      <Printer size={16} /> <span>Print</span>
+                    </button>
+                    <button onClick={handleShare} style={toolBtn}>
+                      <Share2 size={16} /> <span>Share</span>
+                    </button>
+                    <button onClick={handleDownload} style={toolBtn}>
+                      <Download size={16} /> <span>Save</span>
+                    </button>
+                    <button onClick={() => setShowDrawer(false)} style={closeBtn}>
+                      <X size={16} /> <span>Close</span>
+                    </button>
                   </div>
                 </div>
             </div>

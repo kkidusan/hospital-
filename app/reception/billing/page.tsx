@@ -83,7 +83,7 @@ export default async function BillingDashboard() {
           }
 
           .billing-table td {
-            padding: 6px 4px !important; /* Reduced padding by half */
+            padding: 6px 4px !important;
           }
 
           /* Scale text down to roughly 50-60% */
@@ -203,7 +203,7 @@ export default async function BillingDashboard() {
   );
 }
 
-/* Constants Styles - Keep high for Desktop, CSS overrides them for Mobile */
+/* Constants Styles */
 const container = { padding: '24px 32px', background: '#f8fafc', minHeight: '100vh' };
 const header = { marginBottom: '24px' };
 const title = { color: '#0f172a', fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.025em' };

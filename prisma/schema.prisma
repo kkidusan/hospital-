@@ -559,6 +559,32 @@ model Queue {
 }
 
 // ====================== BILLING ======================
+// ... existing User, Patient, etc.
+
+// ====================== SYSTEM CONFIGURATION ======================
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g., "system_logo", "company_name", "primary_color"
+  value       String   @db.Text
+  category    String   @default("general") 
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Optional: If you want to keep a history of branding changes
+model BrandingHistory {
+  id        String   @id @default(cuid())
+  type      String   // "logo", "favicon", "color"
+  oldValue  String
+  newValue  String
+  updatedBy String
+  createdAt DateTime @default(now())
+
+  @@map("branding_history")
+}
 
 model ServiceDefinition {
   id            String          @id @default(cuid())

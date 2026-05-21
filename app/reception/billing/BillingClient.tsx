@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Printer, Share2, Download, X, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -10,11 +10,58 @@ interface Props {
   confirmPaymentAction: (formData: FormData) => Promise<void>;
 }
 
+interface SystemSettings {
+  company_name?: string;
+  company_name_secondary?: string;
+  primary_color?: string;
+  system_logo?: string;
+  physical_address?: string;
+  city?: string;
+  primary_phone?: string;
+  secondary_phone?: string;
+  official_email?: string;
+  website_url?: string;
+}
+
 export default function BillingClient({ invoice, confirmPaymentAction }: Props) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // --- Dynamic Core Settings Data Fetch ---
+  useEffect(() => {
+    const fetchClinicSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data);
+        }
+      } catch (err) {
+        console.error("Failed to load global dynamic clinic configurations:", err);
+      }
+    };
+    fetchClinicSettings();
+  }, []);
+
+  // Safe Fallback Aggregators to safeguard UI if DB records are blank
+  const dynamicPrimaryColor = settings?.primary_color || '#0f172a';
+  const dynamicSuccessColor = settings?.primary_color || '#16a34a';
+  
+  const clinicTitle = settings?.company_name || "DR. BIRKU BELETE";
+  const clinicSubtitle = settings?.company_name_secondary || "INTERNAL MEDICINE SPECIALTY CLINIC";
+
+  const computedLocation = settings?.physical_address && settings?.city
+    ? `${settings.physical_address}, ${settings.city}`
+    : "Woldia, Ethiopia";
+
+  const computedContactRow = [
+    settings?.primary_phone || "0915858840",
+    settings?.secondary_phone || "0925993830",
+    settings?.official_email
+  ].filter(Boolean).join(" / ");
 
   const onConfirm = async () => {
     setLoading(true);
@@ -87,13 +134,21 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
       {/* PARENT CONTAINER FOR ALIGNMENT */}
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         {invoice.status === 'PAID' ? (
-          <button onClick={() => setShowReceipt(true)} style={receiptBtn}>
+          <button 
+            onClick={() => setShowReceipt(true)} 
+            style={{...receiptBtn, color: dynamicSuccessColor, borderColor: dynamicSuccessColor}}
+            className="action-btn-main"
+          >
             <CheckCircle2 size={16} style={{ marginRight: '6px' }} /> 
             <span>View</span><span className="desktop-text">&nbsp;Receipt</span>
           </button>
         ) : (
-          <button onClick={() => setShowConfirm(true)} style={confirmBtn}>
-            <span style={{ width: '16px', marginRight: '6px' }} /> {/* Spacer to match icon width */}
+          <button 
+            onClick={() => setShowConfirm(true)} 
+            style={{...confirmBtn, background: dynamicPrimaryColor}}
+            className="action-btn-main"
+          >
+            <span style={{ width: '16px', marginRight: '6px' }} /> 
             <span>Confirm</span><span className="desktop-text">&nbsp;Payment</span>
           </button>
         )}
@@ -109,7 +164,11 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
             </p>
             <div style={btnRow}>
               <button onClick={() => setShowConfirm(false)} style={cancelBtn}>Cancel</button>
-              <button onClick={onConfirm} disabled={loading} style={actionBtn}>
+              <button 
+                onClick={onConfirm} 
+                disabled={loading} 
+                style={{...actionBtn, background: dynamicPrimaryColor}}
+              >
                 {loading ? 'Processing...' : 'Yes, Confirm'}
               </button>
             </div>
@@ -123,9 +182,23 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
           <div style={drawer} onClick={(e) => e.stopPropagation()}>
             <div id="printable-receipt" ref={receiptRef} style={receiptPaper}>
               <div style={clinicHeader}>
-                <h2 style={clinicName}>DR. BIRKU BELETE</h2>
-                <p style={clinicSub}>INTERNAL MEDICINE SPECIALTY CLINIC</p>
-                <p style={clinicContact}>Woldia, Ethiopia | 0915858840 / 0925993830</p>
+                {settings?.system_logo && (
+                  <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    <img 
+                      src={settings.system_logo} 
+                      alt="Logo" 
+                      style={{ height: '48px', objectFit: 'contain', mixBlendMode: 'multiply' }} 
+                    />
+                  </div>
+                )}
+                <h2 style={clinicName}>{clinicTitle}</h2>
+                <p style={{...clinicSub, color: dynamicSuccessColor}}>{clinicSubtitle}</p>
+                <p style={clinicContact}>{computedLocation} | {computedContactRow}</p>
+                {settings?.website_url && (
+                  <p style={{ margin: 0, fontSize: '0.6rem', color: '#2563eb', fontFamily: 'monospace', textDecoration: 'underline', marginTop: '2px' }}>
+                    {settings.website_url}
+                  </p>
+                )}
                 <div style={doubleLine} />
                 <h4 style={receiptTitle}>OFFICIAL CASH RECEIPT</h4>
               </div>
@@ -159,8 +232,7 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
               <div style={dashedLine} />
 
               <div style={summaryBox}>
-                <div style={rowS}><span>Sub-Total:</span><span>{((invoice.totalAmount ?? 0) - (invoice.taxAmount ?? 0)).toFixed(2)}</span></div>
-                <div style={rowS}><span>VAT (15%):</span><span>{(invoice.taxAmount ?? 0).toFixed(2)}</span></div>
+                <div style={rowS}><span>Sub-Total:</span><span>{(invoice.totalAmount ?? 0).toFixed(2)}</span></div>
                 <div style={totalRow}><span>TOTAL PAID:</span><span>{(invoice.totalAmount ?? 0).toFixed(2)} ETB</span></div>
               </div>
 
@@ -196,7 +268,6 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
 
         @media (max-width: 640px) {
           .desktop-text { display: none; }
-          /* Set a fixed mobile width for both buttons */
           .action-btn-main {
              width: 100px !important; 
           }
@@ -214,7 +285,6 @@ export default function BillingClient({ invoice, confirmPaymentAction }: Props) 
 
 // ====================== STYLES ======================
 
-// Shared Base Styles for Action Buttons to keep alignment identical
 const baseActionBtn = {
   display: 'flex',
   alignItems: 'center',
@@ -224,7 +294,7 @@ const baseActionBtn = {
   fontWeight: 700,
   cursor: 'pointer',
   fontSize: '0.85rem',
-  width: '160px', // Fixed width for desktop consistency
+  width: '160px', 
   transition: 'all 0.2s ease',
   textAlign: 'center' as const
 };
@@ -243,7 +313,6 @@ const receiptBtn = {
   border: '1px solid #16a34a' 
 };
 
-// Modal & Layout Styles (Unchanged)
 const drawerOverlay = { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', justifyContent: 'flex-end' };
 const drawer = { width: '480px', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column' as const };
 const receiptPaper = { flex: 1, padding: '30px', fontFamily: '"Courier New", Courier, monospace', color: '#000' };

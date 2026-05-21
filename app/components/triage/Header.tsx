@@ -11,7 +11,8 @@ import {
   User, 
   Settings, 
   BarChart3, 
-  History 
+  History,
+  Loader2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -19,15 +20,40 @@ interface HeaderProps {
   setIsSidebarOpen?: (open: boolean) => void;
 }
 
+interface SystemConfig {
+  company_name?: string;
+  company_name_secondary?: string;
+  primary_color?: string;
+  system_logo?: string;
+}
+
 export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps) {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [config, setConfig] = useState<SystemConfig | null>(null);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || "Staff";
   const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  // --- Dynamic Branding Fetch ---
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setConfig(data);
+        }
+      } catch (err) {
+        console.error("Failed to load triage header branding:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -41,6 +67,10 @@ export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps)
     return () => document.removeEventListener("mousedown", clickOutside);
   }, []);
 
+  // Fallbacks and Dynamic Colors
+  const mainTitle = config?.company_name || "ዶ/ር ብርኩ በለጠ የውስጥ ደዌ ስፔሻሊቲ ክሊኒክ";
+  const brandColor = config?.primary_color || "#dc2626"; // Default Triage Red
+
   return (
     <header className="h-16 bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       
@@ -53,13 +83,28 @@ export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps)
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        <div className="flex flex-col">
-          <h1 className="text-[11px] md:text-[14px] font-black text-slate-900 leading-tight">
-            ዶ/ር ብርኩ በለጠ የውስጥ ደዌ ስፔሻሊቲ ክሊኒክ
-          </h1>
-          <h2 className="hidden md:block text-[9px] font-bold text-red-600 uppercase tracking-[0.15em]">
-            Emergency & Triage Unit
-          </h2>
+        <div className="flex items-center gap-3">
+          {config?.system_logo && (
+            <img 
+              src={config.system_logo} 
+              alt="Logo" 
+              className="h-8 w-8 object-contain hidden md:block" 
+            />
+          )}
+          <div className="flex flex-col">
+            <h1 
+              className="text-[11px] md:text-[14px] font-black leading-tight transition-colors"
+              style={{ color: config?.primary_color ? 'inherit' : '#0f172a' }} // Use black if no primary color
+            >
+              {mainTitle}
+            </h1>
+            <h2 
+              className="text-[9px] font-bold uppercase tracking-[0.15em]"
+              style={{ color: brandColor }}
+            >
+              Emergency & Triage Unit
+            </h2>
+          </div>
         </div>
       </div>
 
@@ -70,9 +115,9 @@ export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps)
         <div className="relative">
           <button 
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="p-2 text-slate-500 hover:bg-white hover:text-red-600 rounded-xl relative transition-all"
+            className="p-2 text-slate-500 hover:bg-white rounded-xl relative transition-all group"
           >
-            <Bell size={20} />
+            <Bell size={20} className="group-hover:text-slate-900 transition-colors" />
             {unreadCount > 0 && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#f8fafc]" />
             )}
@@ -88,14 +133,22 @@ export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps)
             className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-2xl hover:bg-white hover:shadow-sm transition-all group"
           >
             <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-slate-800 group-hover:text-red-600 transition-colors">
+              <p className="text-xs font-bold text-slate-800 transition-colors">
                 {userName}
               </p>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+              <p 
+                className="text-[9px] font-black uppercase tracking-tighter"
+                style={{ color: brandColor }}
+              >
                 Triage Officer
               </p>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shadow-lg">
+            
+            {/* Dynamic Avatar with Brand Background */}
+            <div 
+              className="w-8 h-8 rounded-xl text-white flex items-center justify-center text-[10px] font-bold shadow-lg transition-transform group-hover:scale-105"
+              style={{ backgroundColor: brandColor }}
+            >
               {initials}
             </div>
             <ChevronDown 
